@@ -6,7 +6,7 @@ Corre como **un contenedor Docker en ZimaOS**. La tablet solo abre una web en mo
 
 Diseño y lógica basados en [eusonlito/Planify-Dashboard](https://github.com/eusonlito/Planify-Dashboard) y en su evolución [leontdi/marco-familiar-dashboard](https://github.com/leontdi/marco-familiar-dashboard). Ver [docs/DECISIONES.md](docs/DECISIONES.md) para saber qué se ha tomado de cada uno y por qué esto es una web y no una app Android.
 
-<p align="center"><img src="docs/capturas/panel.png" width="90%" alt="Vista principal con datos de demostración"></p>
+<p align="center"><img src="docs/capturas/hoy.png" width="90%" alt="Vista principal con datos de demostración"></p>
 
 ## Cómo funciona
 
@@ -21,7 +21,7 @@ Diseño y lógica basados en [eusonlito/Planify-Dashboard](https://github.com/eu
 
 **Pantalla de bloqueo:** el cielo cambia de color con la hora del día, con el reloj, la fecha, el tiempo, el precio de la luz de ahora y los avatares. Tocar un avatar abre el panel. No hay PIN.
 
-**Panel:** lo común (tiempo, luz, calendario, Recordatorios y Tesla) y lo de cada persona (su trayecto). Cada lista de Recordatorios (Compra, Casa…) tiene su pestaña. Tocando tu avatar, arriba a la derecha, vuelves al bloqueo, y lo hace solo tras 2 minutos sin tocar.
+**Panel:** como el marco original, una barra a la derecha con una vista por sección. **Hoy**: hora y tiempo, lo próximo con cuenta atrás, los siete días siguientes y los resúmenes de trayecto, compra, luz y coche. **Calendario**: esta semana y la siguiente con el tiempo de cada día; al tocar una cita se ve el detalle. **Tiempo**: la curva de temperaturas por horas y los próximos días. **Casa**: la calefacción (termostato y válvulas) con su consigna y modo, el aire acondicionado, la temperatura de cada estancia y la música del Echo de la cocina. **Energía**: luz con mejores horas, el Tesla y los trayectos de los dos. **Consumo**: lo que gasta la casa ahora (W y €/h), cada aparato y el consumo de hoy hora a hora con su coste. **Tareas**: las listas de Recordatorios. **Dormir** vuelve a la pantalla de bloqueo. Tocando tu avatar, arriba a la derecha, vuelves al bloqueo, y lo hace solo tras 2 minutos sin tocar.
 
 **Mejores horas:** busca el tramo de N horas seguidas más barato desde ahora, hoy o mañana: 4 h para el coche y 2 h para el lavavajillas y la lavadora. Solo lo recomienda si está por debajo de la media de su día. Por la noche, si aún no se conoce el precio de mañana, dice que mejor esperar (REE lo publica sobre las 20:30). También marca las 3 horas más caras que quedan hoy.
 
@@ -75,7 +75,7 @@ PANEL_CONFIG=config/config.yaml PANEL_DEMO=1 uvicorn app.main:app --port 8090
 
 - `.env` y `config/config.yaml` están en `.gitignore`: el token de Home Assistant nunca va al repositorio.
 - Conviene un **usuario de Home Assistant propio para el panel**, sin permisos de administrador, con su token de larga duración.
-- El único punto de escritura es `POST /api/recordatorios`, protegido con `PANEL_TOKEN`. El resto es de **solo lectura**, y todo está pensado para la red de casa. No lo publiques a Internet sin un proxy con autenticación delante.
+- Escriben dos cosas: `POST /api/recordatorios` (el Atajo, protegido con `PANEL_TOKEN`) y `POST /api/casa/…` (la tablet: consigna, modo y preset de la calefacción y el aire, y la música), que solo actúa sobre las entidades de `config.yaml` y con valores acotados. Todo está pensado para la red de casa: no lo publiques a internet. No lo publiques a Internet sin un proxy con autenticación delante.
 
 ## Pendiente
 

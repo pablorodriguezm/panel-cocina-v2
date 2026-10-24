@@ -28,7 +28,7 @@ usuarios:
 # Calendario compartido de Apple (iCloud), leído con la integración CalDAV de Home Assistant.
 calendario:
   entidad: calendar.rim_y_pablo
-  dias: 7
+  dias: 14   # desde el lunes de esta semana (mínimo 14: esta semana y la siguiente)
 
 # Listas de Recordatorios de Apple que enseña el panel. Las envía un Atajo del iPhone (docs/RECORDATORIOS.md).
 # La primera es la de la compra. Los nombres, tal cual están en Recordatorios.
@@ -57,6 +57,41 @@ coche:
 
 # Recomendaciones según el PVPC: el tramo de N horas seguidas más barato desde ahora (hoy o mañana),
 # solo si su media está por debajo de la media de su día.
+# La casa (vista «Casa»). Es la única parte del panel que da órdenes a Home Assistant, y solo sobre estas
+# entidades. Quita los bloques que no tengas. Los nombres de entidad, de Ajustes → Entidades.
+casa:
+  calefaccion:
+    nombre: Calefacción
+    termostato: climate.sala_de_estar        # p. ej. Netatmo Smart Thermostat (la caldera)
+    nombre_termostato: Salón
+    presets:                                 # los que se pueden elegir desde la tablet, con su nombre
+      schedule: Programa
+      away: Fuera
+      boost: Boost
+      frost_guard: Antihielo
+    valvulas:                                # válvulas termostáticas (opcional)
+      - {entidad: climate.dormitorio, nombre: Dormitorio}
+  aire:
+    modos: [off, heat, cool, heat_cool]      # los que se pueden elegir desde la tablet
+    equipos:
+      - {entidad: climate.salon_aire, nombre: Salón}
+  temperaturas:                              # sensores de temperatura de las estancias
+    - {entidad: sensor.cocina_temperatura, nombre: Cocina}
+    - {entidad: sensor.terraza_temperatura, nombre: Terraza}
+  musica:
+    entidad: media_player.echo_dot_cocina    # Alexa Media Player (o Sonos, HomePod…)
+    nombre: Cocina
+
+# Vista «Consumo» (solo lectura): potencia de la casa y de cada aparato, y el consumo de hoy por horas.
+consumo:
+  potencia_total: sensor.casa_potencia            # W de toda la casa (p. ej. un Shelly EM en el cuadro)
+  energia_total: sensor.casa_energia              # kWh acumulados (total_increasing): el consumo por horas
+  tension: sensor.casa_tension                    # opcional
+  intensidad: sensor.casa_intensidad              # opcional
+  aparatos:
+    - {entidad: sensor.cocina_potencia, nombre: Cocina}
+    - {entidad: sensor.cargador_potencia, nombre: Cargador del coche}
+
 energia:
   recomendaciones:
     - {id: coche, nombre: Cargar el Tesla, emoji: "🚗", horas: 4}

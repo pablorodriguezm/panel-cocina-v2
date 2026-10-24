@@ -8,7 +8,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -26,32 +26,112 @@
     </div>
   </section>
 
-  <!-- Vista principal: lo común y lo de la persona que ha entrado -->
+  <!-- Panel: las vistas a la izquierda y la barra de navegación a la derecha, como el marco original -->
   <section id="main" class="screen" hidden aria-label="Panel">
-    <header class="band sky" id="band">
-      <div class="band-time">
-        <div class="band-clock" id="clock">--:--</div>
-        <div class="band-date" id="date"></div>
+    <div class="content">
+      <div class="view" id="v-hoy" data-view="hoy">
+        <div class="hoy-top">
+          <header class="band sky" id="band">
+            <div class="band-time">
+              <div class="band-clock" id="clock">--:--</div>
+              <div class="band-date" id="date"></div>
+            </div>
+            <div class="band-weather" id="weather"></div>
+          </header>
+          <article class="next" id="next"></article>
+        </div>
+        <div class="week" id="week"></div>
+        <div class="hoy-bottom">
+          <article class="card mini" id="commute"></article>
+          <article class="card mini" id="shop-mini"></article>
+          <article class="card mini" id="energy-mini"></article>
+        </div>
       </div>
-      <div class="band-weather" id="weather"></div>
-      <button class="me" id="me" aria-label="Cambiar de persona"></button>
-    </header>
 
-    <div class="grid">
-      <div class="col">
-        <article class="card commute" id="commute"></article>
-        <article class="card fill" id="calendar"></article>
+      <div class="view" id="v-calendario" data-view="calendario" hidden>
+        <div class="cal" id="cal"></div>
       </div>
-      <div class="col">
-        <article class="card fill" id="energy"></article>
+
+      <div class="view" id="v-tiempo" data-view="tiempo" hidden>
+        <article class="card weather-card" id="weather-full"></article>
       </div>
-      <div class="col">
-        <article class="card" id="car"></article>
-        <article class="card fill" id="shopping"></article>
+
+      <div class="view" id="v-casa" data-view="casa" hidden>
+        <div class="casa">
+          <div class="col">
+            <article class="card fill" id="heating"></article>
+          </div>
+          <div class="col">
+            <article class="card" id="aircon"></article>
+            <article class="card fill" id="rooms"></article>
+          </div>
+          <div class="col">
+            <article class="card fill" id="music"></article>
+          </div>
+        </div>
+      </div>
+
+      <div class="view" id="v-energia" data-view="energia" hidden>
+        <div class="casa">
+          <div class="col">
+            <article class="card fill" id="energy"></article>
+            <article class="card" id="best"></article>
+          </div>
+          <div class="col">
+            <article class="card fill" id="car"></article>
+          </div>
+          <div class="col">
+            <article class="card" id="commutes"></article>
+            <article class="card fill" id="tomorrow"></article>
+          </div>
+        </div>
+      </div>
+
+      <div class="view" id="v-consumo" data-view="consumo" hidden>
+        <div class="consumo">
+          <div class="col">
+            <article class="card" id="power-now"></article>
+            <article class="card fill" id="power-hours"></article>
+          </div>
+          <article class="card fill" id="power-devices"></article>
+        </div>
+      </div>
+
+      <div class="view" id="v-tareas" data-view="tareas" hidden>
+        <div class="tareas">
+          <div class="col" id="lists"></div>
+          <article class="card fill" id="shopping"></article>
+        </div>
       </div>
     </div>
+
+    <nav class="rail" aria-label="Secciones">
+      <button class="me" id="me" aria-label="Cambiar de persona"></button>
+      <button class="nav" data-go="hoy"></button>
+      <button class="nav" data-go="calendario"></button>
+      <button class="nav" data-go="tiempo"></button>
+      <button class="nav" data-go="casa"></button>
+      <button class="nav" data-go="energia"></button>
+      <button class="nav" data-go="consumo"></button>
+      <button class="nav" data-go="tareas"></button>
+      <button class="nav" data-action="refresh"></button>
+      <button class="nav" data-action="sleep"></button>
+      <div class="rail-clock" id="rail-clock" aria-hidden="true"></div>
+    </nav>
+
     <p class="offline" id="offline" hidden>Sin conexión con el servidor: se muestran los últimos datos.</p>
   </section>
+
+  <!-- Detalle de una cita -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <p class="modal-cal" id="modal-cal"></p>
+      <h2 id="modal-title"></h2>
+      <p class="modal-when" id="modal-when"></p>
+      <p class="modal-extra" id="modal-extra"></p>
+      <button class="modal-close" id="modal-close">Cerrar</button>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

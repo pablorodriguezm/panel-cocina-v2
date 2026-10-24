@@ -3,6 +3,7 @@
 - Calendario: entidad calendar.* (iCloud vía la integración CalDAV de HA).
 - Recordatorios (compra y tareas): no pasan por aquí; los envía un Atajo (ver reminders.py).
 - Coche: sensores del Tesla en HA.
+- Casa: calefacción, aire, temperaturas y música (house.py; la única parte que también da órdenes).
 - Trayectos: un sensor de tiempo de viaje (Waze Travel Time o similar) por usuario.
 - Tiempo: Open-Meteo, sin clave.
 - Luz: Red Eléctrica (PVPC), sin clave.
@@ -49,6 +50,19 @@ class HomeAssistant:
                     raise
         return out
 
+    async def call(self, domain: str, service: str, data: dict) -> None:
+        r = await self.client.post(f"{self._base}/api/services/{domain}/{service}", headers=self._headers(),
+                                   timeout=TIMEOUT, json=data)
+        r.raise_for_status()
+
+    async def history(self, entity_id: str, start: datetime, end: datetime) -> list[dict]:
+        r = await self.client.get(f"{self._base}/api/history/period/{start.isoformat()}", headers=self._headers(),
+                                  timeout=TIMEOUT, params={"filter_entity_id": entity_id, "end_time": end.isoformat(),
+                                                           "minimal_response": "", "no_attributes": ""})
+        r.raise_for_status()
+        rows = r.json()
+        return rows[0] if rows else []
+
     async def calendar(self, entity_id: str, start: datetime, end: datetime) -> list[dict]:
         r = await self.client.get(f"{self._base}/api/calendars/{entity_id}", headers=self._headers(), timeout=TIMEOUT,
                                   params={"start": start.isoformat(), "end": end.isoformat()})
@@ -90,8 +104,10 @@ async def calendar_events(ha: HomeAssistant) -> list[dict]:
     if not cfg.get("entidad"):
         return []
     zone = config.zone()
-    start = datetime.now(zone).replace(hour=0, minute=0, second=0, microsecond=0)
-    end = start + timedelta(days=int(cfg.get("dias", 7)))
+    # Desde el lunes de esta semana: la vista de calendario enseña la semana actual y la siguiente
+    today = datetime.now(zone).replace(hour=0, minute=0, second=0, microsecond=0)
+    start = today - timedelta(days=today.weekday())
+    end = start + timedelta(days=max(14, int(cfg.get("dias", 14))))
     events = []
     for ev in await ha.calendar(cfg["entidad"], start, end):
         s, e = ev.get("start", {}), ev.get("end", {})
@@ -102,6 +118,7 @@ async def calendar_events(ha: HomeAssistant) -> list[dict]:
             "end": e.get("date") or e.get("dateTime"),
             "all_day": all_day,
             "location": ev.get("location"),
+            "description": ev.get("description"),
         })
     return sorted(events, key=lambda x: x["start"] or "")
 
@@ -132,6 +149,34 @@ async def car(ha: HomeAssistant) -> dict | None:
     }
 
 
+async def house(ha: HomeAssistant) -> dict | None:
+    from . import house as house_mod
+    ids = house_mod.entities()
+    if not ids:
+        return None
+    return house_mod.build(await ha.states(ids))
+
+
+async def consumption(ha: HomeAssistant, prices: list) -> dict | None:
+    from . import consumption as cons
+    c = cons.cfg()
+    if not c:
+        return None
+    zone = config.zone()
+    now = datetime.now(zone)
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    states = await ha.states(cons.power_entities())
+    hourly = []
+    if c.get("energia_total"):
+        meter = await ha.state(c["energia_total"])
+        unit = meter.get("attributes", {}).get("unit_of_measurement")
+        # Desde un poco antes de medianoche, para tener el valor de partida
+        rows = await ha.history(c["energia_total"], start - timedelta(minutes=10), now)
+        hourly = cons.hourly_from_history(rows, start, now, zone, unit)
+    current = next((p.eur_kwh for p in reversed(prices) if p.time <= now.replace(tzinfo=None)), None) if prices else None
+    return cons.build(states, hourly, prices or [], current)
+
+
 async def commute(ha: HomeAssistant, user_id: str) -> dict | None:
     u = config.user(user_id)
     if not u or not u.get("trayecto"):
@@ -150,9 +195,11 @@ async def commute(ha: HomeAssistant, user_id: str) -> dict | None:
 async def weather(client: httpx.AsyncClient) -> dict:
     loc = config.load()["ubicacion"]
     r = await client.get("https://api.open-meteo.com/v1/forecast", timeout=TIMEOUT, params={
-        "latitude": loc["latitud"], "longitude": loc["longitud"], "timezone": loc["zona"], "forecast_days": 7,
-        "current": "temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m",
-        "hourly": "temperature_2m,precipitation_probability,weather_code",
+        "latitude": loc["latitud"], "longitude": loc["longitud"], "timezone": loc["zona"],
+        # Días pasados de esta semana y las dos siguientes, para la vista de calendario
+        "past_days": 7, "forecast_days": 14,
+        "current": "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,is_day,wind_speed_10m",
+        "hourly": "temperature_2m,precipitation_probability,weather_code,is_day",
         "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
     })
     r.raise_for_status()

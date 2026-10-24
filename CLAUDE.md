@@ -19,8 +19,17 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 - **Luz:** tarifa PVPC por horas. Precio de la API pública de REE; recomendaciones de mejores horas (coche 4 h,
   lavavajillas y lavadora 2 h) que solo aconsejan, no encienden nada.
 - **Coche:** solo el Tesla.
+- **Aire:** solo el Daikin «climate.daikinap69395_room_temperature» (a veces sin corriente); los de Salón y H. Diego no van.
+- **Precio de la luz:** el PVPC de REE coincide con el sensor `sensor.esios_pvpc` de HA. El día del cambio de hora
+  hay 25 horas (dos «02:00»). En la interfaz, el precio de ahora tiene que verse antes que la media.
+- **Casa** (app/house.py): calefacción Netatmo (termostato de la caldera y válvulas), aire Daikin, temperaturas de
+  las estancias y la música del Echo Dot de la cocina. Es lo único que da órdenes a Home Assistant: solo a las
+  entidades de config.yaml, con consigna acotada, modos y presets permitidos, y reproducir/pausar/volumen.
 - **Usuarios:** pantalla de bloqueo con avatar de Pablo y de Rim, **sin PIN**. Lo común igual para los dos;
   lo personal (de momento el trayecto al trabajo, cada uno a un destino distinto) según quién entra.
+- **Estructura como el marco original:** barra de navegación a la derecha (avatar, Hoy, Calendario, Tiempo,
+  Casa, Energía, Consumo, Tareas, Actualizar, Dormir y la hora) con una vista por sección. Las capturas de referencia están en
+  github.com/pablorodriguezm/panel-cocina/tree/main/docs/capturas. No volver a una sola pantalla.
 - **Estilo:** paleta y tipografía de los repos de referencia (crema `#F7EEE2`, tarjetas `#FFFDF9`, Geist,
   cabecera con el cielo según la hora). Al usuario le gustan; mantenlos.
 

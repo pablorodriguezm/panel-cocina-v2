@@ -2,6 +2,9 @@
 
 GET  /api/hogar           → lo común: tiempo, luz, calendario, recordatorios y coche
 POST /api/recordatorios   → el Atajo del iPhone envía las listas de Recordatorios (cabecera X-Panel-Token)
+GET  /api/casa            → calefacción, aire, temperaturas y música
+GET  /api/consumo         → potencia de ahora, por aparato y consumo de hoy por horas
+POST /api/casa/{orden}    → consigna, preset, modo o musica, solo sobre las entidades de config.yaml
 GET /api/usuario/{id}     → lo de cada uno: su trayecto
 GET /api/usuarios         → avatares de la pantalla de bloqueo y ajustes de pantalla
 GET /api/salud            → estado de cada fuente (para depurar)
@@ -20,7 +23,9 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, demo, energy, reminders, sources
+import asyncio
+
+from . import config, demo, energy, house, reminders, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -47,6 +52,11 @@ async def lifespan(_: FastAPI):
         state["reminders"].lists = demo.reminders()
     state["car"] = Cached("coche", 2 * 60, src.car if src else lambda: sources.car(ha))
     state["commute"] = {}
+    async def _consumption():
+        prices = (await state["prices"].get())["data"] or []
+        return await (demo.consumption(prices) if DEMO else sources.consumption(ha, prices))
+    state["consumption"] = Cached("consumo", 30, _consumption)
+    state["house"] = Cached("casa", 20, (lambda: demo.house()) if DEMO else (lambda: sources.house(ha)))
     yield
     await client.aclose()
 
@@ -89,10 +99,41 @@ async def user(user_id: str):
     return {"usuario": next(u for u in config.public_users() if u["id"] == user_id), "trayecto": await cache.get()}
 
 
+@app.get("/api/casa")
+async def home_house():
+    return await state["house"].get()
+
+
+@app.get("/api/consumo")
+async def home_consumption():
+    return await state["consumption"].get()
+
+
+@app.post("/api/casa/{action}")
+async def house_command(action: str, request: Request):
+    try:
+        body = await request.json()
+    except ValueError:
+        raise HTTPException(400, "El cuerpo no es JSON")
+    entity = body.get("entidad") if isinstance(body, dict) else None
+    try:
+        if DEMO:
+            demo.house_command(action, body)
+        else:
+            states = {entity: await state["ha"].state(entity)} if entity in house.climate_entities() else {}
+            domain, service, data = house.command(action, body, states)
+            await state["ha"].call(domain, service, data)
+            await asyncio.sleep(1.5)  # que Home Assistant recoja el cambio antes de volver a leer
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    state["house"].invalidate()
+    return await state["house"].get()
+
+
 @app.get("/api/salud")
 async def health():
     out = {}
-    for key in ("weather", "prices", "calendar", "car"):
+    for key in ("weather", "prices", "calendar", "car", "house", "consumption"):
         c = await state[key].get()
         out[key] = {"ok": not c["stale"] and c["data"] is not None, "error": c["error"], "updated": c["updated"]}
     out["recordatorios"] = {l["nombre"]: {"elementos": len(l["items"]), "updated": l["updated"]}
