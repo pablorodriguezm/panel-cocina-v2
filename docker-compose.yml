@@ -1,0 +1,24 @@
+# Panel de cocina. En ZimaOS: App Store → «+» → Instalar app personalizada → Importar este docker-compose,
+# o por SSH en la carpeta del proyecto: docker compose up -d --build
+name: panel-cocina
+services:
+  panel:
+    build: .
+    image: panel-cocina:latest
+    container_name: panel-cocina
+    env_file: .env
+    environment:
+      TZ: Europe/Madrid
+      PANEL_CONFIG: /config/config.yaml
+      PANEL_DATA: /data
+    volumes:
+      - ./config:/config:ro
+      # Copia de los Recordatorios que envía el Atajo (sobrevive a reinicios)
+      - panel-data:/data
+    ports:
+      - "${PANEL_PORT:-8090}:8090"
+    restart: unless-stopped
+    mem_limit: 256m
+
+volumes:
+  panel-data:

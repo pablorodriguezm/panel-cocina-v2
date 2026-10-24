@@ -1,0 +1,155 @@
+"""Fuentes de datos. Home Assistant hace de pegamento: la tablet nunca habla con él, solo con este servicio.
+
+- Calendario: entidad calendar.* (iCloud vía la integración CalDAV de HA).
+- Recordatorios (compra y tareas): no pasan por aquí; los envía un Atajo (ver reminders.py).
+- Coche: sensores del Tesla en HA.
+- Trayectos: un sensor de tiempo de viaje (Waze Travel Time o similar) por usuario.
+- Tiempo: Open-Meteo, sin clave.
+- Luz: Red Eléctrica (PVPC), sin clave.
+"""
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+
+import httpx
+
+from . import config, energy
+
+TIMEOUT = httpx.Timeout(15.0, connect=5.0)
+
+
+class HomeAssistant:
+    def __init__(self, client: httpx.AsyncClient):
+        self.client = client
+
+    @property
+    def _base(self) -> str:
+        return config.load()["home_assistant"]["url"].rstrip("/")
+
+    def _headers(self) -> dict:
+        token = config.ha_token()
+        if not token:
+            raise RuntimeError("Falta HA_TOKEN en .env")
+        return {"Authorization": f"Bearer {token}"}
+
+    async def state(self, entity_id: str) -> dict:
+        r = await self.client.get(f"{self._base}/api/states/{entity_id}", headers=self._headers(), timeout=TIMEOUT)
+        r.raise_for_status()
+        return r.json()
+
+    async def states(self, entity_ids: list[str]) -> dict[str, dict | None]:
+        out: dict[str, dict | None] = {}
+        for e in entity_ids:
+            try:
+                out[e] = await self.state(e)
+            except httpx.HTTPStatusError as err:
+                if err.response.status_code == 404:
+                    out[e] = None  # entidad mal escrita o que ya no existe: no tumba el resto
+                else:
+                    raise
+        return out
+
+    async def calendar(self, entity_id: str, start: datetime, end: datetime) -> list[dict]:
+        r = await self.client.get(f"{self._base}/api/calendars/{entity_id}", headers=self._headers(), timeout=TIMEOUT,
+                                  params={"start": start.isoformat(), "end": end.isoformat()})
+        r.raise_for_status()
+        return r.json()
+
+
+def _num(state: dict | None) -> float | None:
+    if not state:
+        return None
+    try:
+        return float(state["state"])
+    except (TypeError, ValueError):
+        return None
+
+
+def _unit(state: dict | None) -> str | None:
+    return (state or {}).get("attributes", {}).get("unit_of_measurement")
+
+
+def _on(state: dict | None, *values: str) -> bool:
+    return bool(state) and str(state["state"]).lower() in {"on", "true", *values}
+
+
+async def calendar_events(ha: HomeAssistant) -> list[dict]:
+    cfg = config.load().get("calendario") or {}
+    if not cfg.get("entidad"):
+        return []
+    zone = config.zone()
+    start = datetime.now(zone).replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=int(cfg.get("dias", 7)))
+    events = []
+    for ev in await ha.calendar(cfg["entidad"], start, end):
+        s, e = ev.get("start", {}), ev.get("end", {})
+        all_day = "date" in s
+        events.append({
+            "title": ev.get("summary") or "(sin título)",
+            "start": s.get("date") or s.get("dateTime"),
+            "end": e.get("date") or e.get("dateTime"),
+            "all_day": all_day,
+            "location": ev.get("location"),
+        })
+    return sorted(events, key=lambda x: x["start"] or "")
+
+
+async def car(ha: HomeAssistant) -> dict | None:
+    cfg = config.load().get("coche")
+    if not cfg:
+        return None
+    ent = cfg.get("entidades", {})
+    wanted = [v for k, v in ent.items() if v and k != "ruedas"] + [v for v in (ent.get("ruedas") or {}).values() if v]
+    st = await ha.states(wanted)
+    get = lambda key: st.get(ent.get(key)) if ent.get(key) else None  # noqa: E731
+    ruedas = {pos: _num(st.get(e)) for pos, e in (ent.get("ruedas") or {}).items() if e}
+    ruedas_unit = next((_unit(st.get(e)) for e in (ent.get("ruedas") or {}).values() if e and st.get(e)), None)
+    potencia = _num(get("potencia_carga"))
+    return {
+        "nombre": cfg.get("nombre", "Coche"),
+        "bateria": _num(get("bateria")),
+        "autonomia": _num(get("autonomia")),
+        "autonomia_unidad": _unit(get("autonomia")) or "km",
+        "cargando": _on(get("cargando"), "charging"),
+        "enchufado": _on(get("enchufado"), "connected", "plugged_in"),
+        "potencia_kw": potencia if (_unit(get("potencia_carga")) or "kW").lower() == "kw" else (potencia / 1000 if potencia else None),
+        "limite_carga": _num(get("limite_carga")),
+        "km": _num(get("cuentakilometros")),
+        "ruedas": ruedas or None,
+        "ruedas_unidad": ruedas_unit,
+        "actualizado": (get("bateria") or {}).get("last_changed"),
+    }
+
+
+async def commute(ha: HomeAssistant, user_id: str) -> dict | None:
+    u = config.user(user_id)
+    if not u or not u.get("trayecto"):
+        return None
+    st = await ha.state(u["trayecto"])
+    attrs = st.get("attributes", {})
+    return {
+        "destino": u.get("destino", "Trabajo"),
+        "minutos": _num(st),
+        "ruta": attrs.get("route"),
+        "distancia": attrs.get("distance"),
+        "actualizado": st.get("last_updated"),
+    }
+
+
+async def weather(client: httpx.AsyncClient) -> dict:
+    loc = config.load()["ubicacion"]
+    r = await client.get("https://api.open-meteo.com/v1/forecast", timeout=TIMEOUT, params={
+        "latitude": loc["latitud"], "longitude": loc["longitud"], "timezone": loc["zona"], "forecast_days": 7,
+        "current": "temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m",
+        "hourly": "temperature_2m,precipitation_probability,weather_code",
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
+    })
+    r.raise_for_status()
+    return r.json()
+
+
+async def prices(client: httpx.AsyncClient) -> list[energy.HourPrice]:
+    today = datetime.now(config.zone()).date()
+    r = await client.get(energy.REE_URL, params=energy.ree_params(today, today + timedelta(days=1)), timeout=TIMEOUT)
+    r.raise_for_status()
+    return energy.parse_ree(r.json(), config.zone())

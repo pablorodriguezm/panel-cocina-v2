@@ -1,0 +1,68 @@
+# Copia este fichero como config/config.yaml y ajústalo. config.yaml está en .gitignore.
+# El token de Home Assistant NO va aquí: va en .env (HA_TOKEN).
+
+home_assistant:
+  # URL de Home Assistant vista desde el contenedor (red local).
+  url: http://192.168.1.10:8123
+
+ubicacion:
+  # Para el tiempo (Open-Meteo). Coordenadas de casa.
+  latitud: 0.0
+  longitud: 0.0
+  zona: Europe/Madrid
+
+# Los avatares de la pantalla de bloqueo. Sin PIN: se toca el avatar y se entra.
+# «trayecto»: sensor de tiempo de viaje de esa persona (p. ej. Waze Travel Time), en minutos.
+usuarios:
+  - id: pablo
+    nombre: Pablo
+    color: "#3F7FD9"
+    destino: Trabajo
+    trayecto: sensor.trayecto_pablo
+  - id: rim
+    nombre: Rim
+    color: "#C8243B"
+    destino: Trabajo
+    trayecto: sensor.trayecto_rim
+
+# Calendario compartido de Apple (iCloud), leído con la integración CalDAV de Home Assistant.
+calendario:
+  entidad: calendar.rim_y_pablo
+  dias: 7
+
+# Listas de Recordatorios de Apple que enseña el panel. Las envía un Atajo del iPhone (docs/RECORDATORIOS.md).
+# La primera es la de la compra. Los nombres, tal cual están en Recordatorios.
+recordatorios:
+  listas:
+    - Compra
+    - Casa
+
+# El Tesla. Los nombres dependen de la integración (Tesla Fleet, Teslemetry, Tessie…):
+# compruébalos en Ajustes → Dispositivos → tu coche. Deja vacío lo que no tengas.
+coche:
+  nombre: Tesla
+  entidades:
+    bateria: sensor.tesla_battery_level
+    autonomia: sensor.tesla_battery_range
+    cargando: sensor.tesla_charging
+    enchufado: binary_sensor.tesla_charge_cable
+    potencia_carga: sensor.tesla_charger_power
+    limite_carga: number.tesla_charge_limit
+    cuentakilometros: sensor.tesla_odometer
+    ruedas:
+      del_izq: sensor.tesla_tire_pressure_front_left
+      del_der: sensor.tesla_tire_pressure_front_right
+      tras_izq: sensor.tesla_tire_pressure_rear_left
+      tras_der: sensor.tesla_tire_pressure_rear_right
+
+# Recomendaciones según el PVPC: el tramo de N horas seguidas más barato desde ahora (hoy o mañana),
+# solo si su media está por debajo de la media de su día.
+energia:
+  recomendaciones:
+    - {id: coche, nombre: Cargar el Tesla, emoji: "🚗", horas: 4}
+    - {id: lavavajillas, nombre: Lavavajillas, emoji: "🍽️", horas: 2}
+    - {id: lavadora, nombre: Lavadora, emoji: "🧺", horas: 2}
+
+pantalla:
+  # Vuelve a la pantalla de bloqueo tras estos segundos sin tocar.
+  volver_al_bloqueo_s: 120
