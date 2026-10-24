@@ -251,8 +251,10 @@ function renderCar() {
   const status = c.cargando ? `Cargando${c.potencia_kw ? ` a ${c.potencia_kw.toLocaleString(ES, { maximumFractionDigits: 1 })} kW` : ""}`
     : c.enchufado ? "Enchufado, sin cargar" : "Desenchufado";
   const names = { del_izq: "Del. izq.", del_der: "Del. der.", tras_izq: "Tras. izq.", tras_der: "Tras. der." };
+  // Presión en bar; por debajo de 2,5 bar se marca en rojo
   const tires = c.ruedas ? `<div class="tires">${Object.entries(c.ruedas).map(([k, v]) =>
-    `<span>${names[k] || esc(k)} <b>${v != null ? v.toLocaleString(ES, { maximumFractionDigits: 1 }) : "–"}</b></span>`).join("")}</div>` : "";
+    `<span>${names[k] || esc(k)} <b class="${v != null && v < 2.5 ? "low" : ""}">${v != null ? v.toLocaleString(ES, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "–"}</b></span>`).join("")}</div>
+    <span class="tires-unit">Presión en ${esc(c.ruedas_unidad || "bar")}</span>` : "";
   $("car").className = `card${c.cargando ? " charging" : ""}`;
   $("car").innerHTML = head("🚗", c.nombre, color) + `<div class="car">
     <div class="gauge">${gauge(lvl, color)}<div class="pct">${lvl != null ? Math.round(lvl) + " %" : "–"}</div>

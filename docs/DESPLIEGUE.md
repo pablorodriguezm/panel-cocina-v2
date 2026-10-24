@@ -1,9 +1,10 @@
 # Despliegue: GitHub → ZimaOS
 
 ```
- rama de trabajo ──PR──► main ──► GitHub Actions: pruebas + imagen ──► ghcr.io/<usuario>/panel-cocina:latest
+ rama de trabajo ──PR──► main ──► GitHub Actions: pruebas + imagen sha-xxxxxxx en ghcr.io
+                                                   └─► commit en deploy/portainer-compose.yml con esa etiqueta
                                                                               │
-                                    Portainer en ZimaOS (sondea el repo) ◄────┘  y vuelve a desplegar
+                                    Portainer en ZimaOS (sondea el repo) ◄────┘  ve el commit y redespliega
 ```
 
 Nadie entra en el servidor para desplegar: se trabaja en ramas, se fusiona a `main` y Portainer se actualiza solo.
@@ -42,11 +43,13 @@ Stacks → **Add stack** → **Repository**:
 - Compose path: `deploy/portainer-compose.yml`
 - Si el repositorio es privado: **Authentication** con tu usuario y un token de GitHub de solo lectura
   (fine-grained, solo este repositorio, permiso *Contents: Read*).
-- **Environment variables:** `IMAGEN=ghcr.io/<usuario>/panel-cocina:latest`, `HA_TOKEN`, `PANEL_TOKEN`, `PANEL_PORT=8090`.
-- **GitOps updates:** activado, **Polling** cada 5 minutos, con **Re-pull image** activado.
+- **Environment variables:** `HA_TOKEN`, `PANEL_TOKEN`, `PANEL_PORT=8090`.
+- **GitOps updates:** activado, **Polling** cada 5 minutos.
 
-«Re-pull image» es importante: la imagen siempre se llama `latest`, así que sin él Portainer solo redesplegaría
-cuando cambie el compose, no cuando haya imagen nueva.
+Portainer CE no tiene «Re-pull image» (es de la edición Business), así que con una etiqueta fija como `latest`
+nunca se enteraría de una imagen nueva. Por eso el workflow, después de publicar la imagen, escribe su etiqueta
+concreta (`sha-xxxxxxx`) en la línea `image:` de `deploy/portainer-compose.yml` y hace commit con `[skip ci]`.
+Portainer ve ese commit en el siguiente sondeo y redespliega. No edites esa línea a mano.
 
 ## Sin Portainer
 

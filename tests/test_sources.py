@@ -24,7 +24,7 @@ STATES = {
     "sensor.tesla_battery_level": {"state": "64", "attributes": {"unit_of_measurement": "%"}, "last_changed": "x"},
     "sensor.tesla_charging": {"state": "charging", "attributes": {}},
     "sensor.tesla_charger_power": {"state": "7400", "attributes": {"unit_of_measurement": "W"}},
-    "sensor.tesla_tire_fl": {"state": "2.9", "attributes": {"unit_of_measurement": "bar"}},
+    "sensor.tesla_tire_fl": {"state": "41.3357570107257", "attributes": {"unit_of_measurement": "psi"}},
     "sensor.trayecto_pablo": {"state": "24", "attributes": {"route": "A-49", "distance": 21.5}, "last_updated": "y"},
 }
 
@@ -58,7 +58,9 @@ def test_car(ha):
     car = asyncio.run(sources.car(ha))
     assert car["bateria"] == 64 and car["cargando"] is True
     assert car["potencia_kw"] == pytest.approx(7.4)
-    assert car["ruedas"] == {"del_izq": 2.9, "del_der": None}  # una entidad que no existe no tumba el resto
+    # 41,3 psi → 2,85 bar; una entidad que no existe no tumba el resto
+    assert car["ruedas"] == {"del_izq": 2.85, "del_der": None}
+    assert car["ruedas_unidad"] == "bar"
 
 
 def test_calendar_sorted_with_all_day_first(ha):

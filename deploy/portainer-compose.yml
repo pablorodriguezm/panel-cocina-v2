@@ -1,10 +1,11 @@
 # Despliegue en ZimaOS con Portainer (stack desde el repositorio Git, ver docs/DESPLIEGUE.md).
 # Usa la imagen que construye GitHub Actions, no compila nada en el servidor.
-# Las variables (HA_TOKEN, PANEL_TOKEN, IMAGEN, PANEL_PORT) se ponen en Portainer, no aquí.
+# La línea «image:» la reescribe el workflow en cada versión (etiqueta sha-…): no la edites a mano.
+# Las variables (HA_TOKEN, PANEL_TOKEN, PANEL_PORT) se ponen en Portainer, no aquí.
 name: panel-cocina
 services:
   panel:
-    image: ${IMAGEN:-ghcr.io/CAMBIA-USUARIO/panel-cocina:latest}
+    image: ghcr.io/pablorodriguezm/panel-cocina-v2:latest
     container_name: panel-cocina
     environment:
       TZ: Europe/Madrid

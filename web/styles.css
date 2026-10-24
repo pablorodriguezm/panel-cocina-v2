@@ -179,6 +179,8 @@ button:focus-visible { outline: 3px solid var(--rain); outline-offset: 3px; }
 .gauge .rng { font-size: 14px; color: var(--ink-soft); margin-top: 4px; }
 .car-facts { flex: 1; font-size: 15px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 4px; }
 .car-facts b { color: var(--ink); font-weight: 600; }
+.tires b.low { color: var(--red); }
+.tires-unit { font-size: 12px; color: var(--ink-muted); }
 .tires { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; font-variant-numeric: tabular-nums; }
 .charging .gauge path.fill { animation: pulse 2.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .55; } }

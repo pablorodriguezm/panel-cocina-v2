@@ -69,6 +69,18 @@ def _unit(state: dict | None) -> str | None:
     return (state or {}).get("attributes", {}).get("unit_of_measurement")
 
 
+# Presión de las ruedas: el panel siempre la enseña en bar
+TO_BAR = {"bar": 1.0, "psi": 0.0689476, "kpa": 0.01}
+
+
+def _pressure_bar(state: dict | None) -> float | None:
+    value = _num(state)
+    if value is None:
+        return None
+    factor = TO_BAR.get((_unit(state) or "bar").lower())
+    return round(value * factor, 2) if factor else None
+
+
 def _on(state: dict | None, *values: str) -> bool:
     return bool(state) and str(state["state"]).lower() in {"on", "true", *values}
 
@@ -102,8 +114,7 @@ async def car(ha: HomeAssistant) -> dict | None:
     wanted = [v for k, v in ent.items() if v and k != "ruedas"] + [v for v in (ent.get("ruedas") or {}).values() if v]
     st = await ha.states(wanted)
     get = lambda key: st.get(ent.get(key)) if ent.get(key) else None  # noqa: E731
-    ruedas = {pos: _num(st.get(e)) for pos, e in (ent.get("ruedas") or {}).items() if e}
-    ruedas_unit = next((_unit(st.get(e)) for e in (ent.get("ruedas") or {}).values() if e and st.get(e)), None)
+    ruedas = {pos: _pressure_bar(st.get(e)) for pos, e in (ent.get("ruedas") or {}).items() if e}
     potencia = _num(get("potencia_carga"))
     return {
         "nombre": cfg.get("nombre", "Coche"),
@@ -116,7 +127,7 @@ async def car(ha: HomeAssistant) -> dict | None:
         "limite_carga": _num(get("limite_carga")),
         "km": _num(get("cuentakilometros")),
         "ruedas": ruedas or None,
-        "ruedas_unidad": ruedas_unit,
+        "ruedas_unidad": "bar",
         "actualizado": (get("bateria") or {}).get("last_changed"),
     }
 

@@ -5,7 +5,7 @@ Lee esto antes de tocar nada. Resume lo decidido en las conversaciones previas; 
 ## Qué es
 
 Panel para la tablet de la cocina de Pablo y Rim (Redmi Pad Pro, horizontal, ~1280×800 CSS px, Fully Kiosk Browser).
-Web servida por un contenedor en ZimaOS, desplegado con Portainer desde este repositorio (`docs/DESPLIEGUE.md`).
+Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocina-v2), desplegado con Portainer desde este repositorio (`docs/DESPLIEGUE.md`).
 
 ## Decisiones (no las cambies sin preguntar)
 
@@ -27,8 +27,11 @@ Web servida por un contenedor en ZimaOS, desplegado con Portainer desde este rep
 ## Cómo se trabaja
 
 - Español en código, comentarios, commits y documentación.
-- Nunca se trabaja en `main`: rama + pull request. Al fusionar, GitHub Actions publica la imagen en ghcr.io y
-  Portainer redespliega solo.
+- Nunca se trabaja en `main`: rama + pull request. Al fusionar, GitHub Actions publica la imagen en ghcr.io,
+  escribe su etiqueta en `deploy/portainer-compose.yml` (commit `[skip ci]`) y Portainer CE redespliega al verlo.
+  No toques a mano la línea `image:` de ese fichero.
+- Despliegue real: ZimaOS en 192.168.1.34 (Portainer :9000, panel :8090), Home Assistant en 192.168.1.202.
+  La configuración vive en el servidor en /DATA/AppData/panel-cocina/config/config.yaml.
 - Secretos solo en variables de Portainer o `.env` (ignorado): `HA_TOKEN`, `PANEL_TOKEN`. `config/config.yaml`
   tampoco se sube.
 - Antes de un PR: `python -m pytest -q`. Para ver la interfaz sin Home Assistant:
