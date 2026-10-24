@@ -1,5 +1,6 @@
-# Pruebas en cada rama y PR. Al llegar a main: imagen nueva en GitHub Container Registry,
-# que Portainer recoge solo (deploy/portainer-compose.yml, docs/DESPLIEGUE.md).
+# Pruebas en cada rama y PR. Al llegar a main: imagen nueva en GitHub Container Registry y su etiqueta
+# escrita en deploy/portainer-compose.yml. Ese commit es lo que ve Portainer (GitOps por sondeo) para
+# redesplegar: Portainer CE no tiene «Re-pull image», así que con «latest» no se enteraría.
 name: Pruebas e imagen
 
 on:
@@ -8,7 +9,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write   # para el commit con la etiqueta nueva en deploy/
   packages: write
 
 jobs:
@@ -24,6 +25,7 @@ jobs:
 
   imagen:
     needs: pruebas
+    # Los commits del propio workflow llevan [skip ci] y no lo vuelven a lanzar
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -52,3 +54,15 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Apuntar el despliegue a la imagen nueva
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          TAG="sha-${GITHUB_SHA::7}"
+          IMAGE="ghcr.io/${REPO,,}:${TAG}"
+          sed -i -E "s#^(\s*image:).*#\1 ${IMAGE}#" deploy/portainer-compose.yml
+          grep -n "image:" deploy/portainer-compose.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Despliegue: ${TAG} [skip ci]" || exit 0
+          git push
