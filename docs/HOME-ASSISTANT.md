@@ -47,6 +47,16 @@ cambian según la integración y el nombre del coche: míralos en Ajustes → Di
 Integración **Waze Travel Time**, una por persona: origen casa, destino su trabajo. Cada una crea un sensor en minutos
 (p. ej. `sensor.trayecto_pablo`), que va en `usuarios[].trayecto`. El panel enseña los minutos y la ruta.
 
+## Consumo de la casa (cargador V2C Trydan)
+
+La integración **V2C** de HA (la del cargador Trydan) mide la casa entera con su pinza: el sensor `house_power`
+(«Potencia de la casa», en W) va en `consumo.potencia_total`. Es el mismo número que enseña el medidor de HA.
+
+Para «Hoy, hora a hora» basta con eso: si no hay `consumo.energia_total`, el panel integra el historial de la
+potencia (el recorder de HA tiene que guardar ese sensor, como hace por defecto). Si algún día tienes un contador
+en kWh de toda la casa (`total_increasing`), ponlo en `energia_total` y se usa ese. El `charge_energy` del V2C no
+sirve: es solo lo que ha cargado el coche. La potencia de carga (`charge_power`) sí puede ir en `aparatos`.
+
 ## Precio de la luz y tiempo
 
 No pasan por Home Assistant: el panel pide el PVPC a Red Eléctrica y el tiempo a Open-Meteo, las dos sin clave.

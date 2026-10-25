@@ -157,6 +157,24 @@ async def house(ha: HomeAssistant) -> dict | None:
     return house_mod.build(await ha.states(ids))
 
 
+# Horas ya cerradas del consumo calculado con la potencia: así cada 30 s solo se pide el historial de la hora en curso
+_power_hours: dict = {"clave": None, "horas": []}
+
+
+async def _hourly_from_power(ha: HomeAssistant, entity: str, unit: str | None, start: datetime, now: datetime) -> list[dict]:
+    from . import consumption as cons
+    zone = config.zone()
+    key = (entity, start.isoformat())
+    closed = _power_hours["horas"] if _power_hours["clave"] == key else []
+    hours = cons._hours(start, now, zone)
+    first = hours[len(closed)][1] if len(closed) < len(hours) else now
+    rows = await ha.history(entity, first, now)
+    fresh = cons.hourly_from_power(rows, start, now, zone, unit, first_hour=first)
+    out = closed + fresh
+    _power_hours.update(clave=key, horas=[h for h, (_, _, end) in zip(out, hours) if end <= now])
+    return out
+
+
 async def consumption(ha: HomeAssistant, prices: list) -> dict | None:
     from . import consumption as cons
     c = cons.cfg()
@@ -166,15 +184,23 @@ async def consumption(ha: HomeAssistant, prices: list) -> dict | None:
     now = datetime.now(zone)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     states = await ha.states(cons.power_entities())
-    hourly = []
+    hourly, source = [], None
     if c.get("energia_total"):
-        meter = await ha.state(c["energia_total"])
-        unit = meter.get("attributes", {}).get("unit_of_measurement")
-        # Desde un poco antes de medianoche, para tener el valor de partida
-        rows = await ha.history(c["energia_total"], start - timedelta(minutes=10), now)
-        hourly = cons.hourly_from_history(rows, start, now, zone, unit)
+        meter = (await ha.states([c["energia_total"]]))[c["energia_total"]]
+        if meter:  # si la entidad no existe, se calcula con la potencia
+            unit = meter.get("attributes", {}).get("unit_of_measurement")
+            # Desde un poco antes de medianoche, para tener el valor de partida
+            rows = await ha.history(c["energia_total"], start - timedelta(minutes=10), now)
+            hourly = cons.hourly_from_history(rows, start, now, zone, unit)
+            source = "contador" if hourly else None
+    if not hourly and c.get("potencia_total") and states.get(c["potencia_total"]):
+        unit = states[c["potencia_total"]].get("attributes", {}).get("unit_of_measurement")
+        hourly = await _hourly_from_power(ha, c["potencia_total"], unit, start, now)
+        source = "potencia" if hourly else None
     current = next((p.eur_kwh for p in reversed(prices) if p.time <= now.replace(tzinfo=None)), None) if prices else None
-    return cons.build(states, hourly, prices or [], current)
+    out = cons.build(states, hourly, prices or [], current)
+    out["horas_fuente"] = source
+    return out
 
 
 async def commute(ha: HomeAssistant, user_id: str) -> dict | None:
