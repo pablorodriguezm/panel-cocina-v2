@@ -92,8 +92,25 @@ def test_power_history_only_asks_for_the_open_hour(tmp_path, monkeypatch):
 
     start = datetime(2026, 10, 20, 0, 0, tzinfo=MADRID)
     run = lambda now: asyncio.run(sources._hourly_from_power(FakeHA(), "sensor.x", "W", start, now))  # noqa: E731
-    sources._power_hours.update(clave=None, horas=[])
+    sources._power_hours.clear()
     assert [h["kwh"] for h in run(datetime(2026, 10, 20, 2, 30, tzinfo=MADRID))] == pytest.approx([1, 1, 0.5])
     h = run(datetime(2026, 10, 20, 2, 45, tzinfo=MADRID))
     assert [x["kwh"] for x in h] == pytest.approx([1, 1, 0.75])
     assert asked[1] == datetime(2026, 10, 20, 2, 0, tzinfo=MADRID)
+
+
+def test_several_meters_and_powers_are_added(tmp_path, monkeypatch):
+    p = tmp_path / "config.yaml"
+    p.write_text("ubicacion: {latitud: 0, longitud: 0}\n"
+                 "consumo: {potencia_total: [sensor.shelly_w, sensor.trydan_w, sensor.no_existe]}\n", encoding="utf-8")
+    monkeypatch.setattr(config, "CONFIG_PATH", p)
+    config.load.cache_clear()
+    assert consumption.power_entities() == ["sensor.shelly_w", "sensor.trydan_w", "sensor.no_existe"]
+    states = {"sensor.shelly_w": {"state": "500", "attributes": {}},
+              "sensor.trydan_w": {"state": "7.4", "attributes": {"unit_of_measurement": "kW"}},
+              "sensor.no_existe": None}
+    hourly = consumption.add_hours([[{"time": "2026-10-20T00:00", "kwh": 0.3}], [],
+                                    [{"time": "2026-10-20T00:00", "kwh": 7.0}]])
+    out = consumption.build(states, hourly, [], None)
+    assert out["ahora_w"] == 7900
+    assert out["hoy_kwh"] == pytest.approx(7.3)
