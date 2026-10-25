@@ -47,15 +47,23 @@ cambian según la integración y el nombre del coche: míralos en Ajustes → Di
 Integración **Waze Travel Time**, una por persona: origen casa, destino su trabajo. Cada una crea un sensor en minutos
 (p. ej. `sensor.trayecto_pablo`), que va en `usuarios[].trayecto`. El panel enseña los minutos y la ruta.
 
-## Consumo de la casa (cargador V2C Trydan)
+## Consumo de la casa
 
-La integración **V2C** de HA (la del cargador Trydan) mide la casa entera con su pinza: el sensor `house_power`
-(«Potencia de la casa», en W) va en `consumo.potencia_total`. Es el mismo número que enseña el medidor de HA.
+Pon los **mismos sensores que el panel de Energía** de HA (Ajustes → Paneles → Energía → «Consumo de la red
+eléctrica»): así el panel da los mismos kWh. Si son varios, van en lista y se suman.
 
-Para «Hoy, hora a hora» basta con eso: si no hay `consumo.energia_total`, el panel integra el historial de la
-potencia (el recorder de HA tiene que guardar ese sensor, como hace por defecto). Si algún día tienes un contador
-en kWh de toda la casa (`total_increasing`), ponlo en `energia_total` y se usa ese. El `charge_energy` del V2C no
-sirve: es solo lo que ha cargado el coche. La potencia de carga (`charge_power`) sí puede ir en `aparatos`.
+En casa son dos, porque el cargador no pasa por el Shelly del cuadro:
+
+| | Potencia (W) → `potencia_total` | Energía (kWh) → `energia_total` |
+|---|---|---|
+| Shelly (la casa sin el cargador) | su sensor de potencia | su sensor de energía |
+| V2C Trydan (el coche) | `charge_power` | `charge_energy` |
+
+El `charge_energy` del Trydan vuelve a cero en cada carga; el panel no lo cuenta como consumo negativo. Ojo con el
+`house_power` del Trydan: no incluye la carga del coche, así que solo no da el total.
+
+Si no hay `energia_total`, «Hoy, hora a hora» se calcula integrando el historial de la potencia (el recorder de HA
+tiene que guardar esos sensores, como hace por defecto). La potencia de carga también puede ir en `aparatos`.
 
 ## Precio de la luz y tiempo
 

@@ -84,12 +84,15 @@ casa:
 
 # Vista «Consumo» (solo lectura): potencia de la casa y de cada aparato, y el consumo de hoy por horas.
 consumo:
-  # W de toda la casa: con el cargador V2C Trydan es su sensor «house_power» («Potencia de la casa»),
-  # p. ej. sensor.v2c_trydan_house_power (míralo en Ajustes → Dispositivos → el Trydan)
-  potencia_total: sensor.v2c_trydan_house_power
-  # Opcional: kWh acumulados (total_increasing). Sin él, el consumo por horas se calcula con la potencia_total.
-  # No uses el «charge_energy» del V2C: es solo lo que carga el coche.
-  # energia_total: sensor.casa_energia
+  # Los mismos sensores que el panel de Energía de HA («Consumo de la red»). Si son varios, se suman: p. ej. el Shelly
+  # del cuadro (la casa, sin el cargador) y el V2C Trydan (el coche).
+  potencia_total:                                 # W
+    - sensor.shelly_casa_potencia
+    - sensor.v2c_trydan_charge_power
+  energia_total:                                  # kWh acumulados (total_increasing): el consumo por horas
+    - sensor.shelly_casa_energia
+    - sensor.v2c_trydan_charge_energy
+  # Con un solo sensor vale también «potencia_total: sensor.x». Sin energia_total, las horas se calculan con la potencia.
   tension: sensor.casa_tension                    # opcional
   intensidad: sensor.casa_intensidad              # opcional
   aparatos:

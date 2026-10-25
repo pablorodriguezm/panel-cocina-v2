@@ -2,8 +2,9 @@
 
 - Potencia de ahora de la casa entera y de cada aparato o circuito (sensores en W de Home Assistant).
 - Consumo de hoy hora a hora, a partir del historial del contador de energía (kWh, total_increasing), y su coste
-  con el PVPC de cada hora. Sin contador (el V2C Trydan solo da la potencia de la casa en W), se calcula integrando
-  el historial de la potencia total.
+  con el PVPC de cada hora. Sin contador, se calcula integrando el historial de la potencia total.
+- `potencia_total` y `energia_total` admiten una lista de sensores que se suman, como en el panel de Energía de HA
+  (p. ej. el Shelly del cuadro, que no ve el cargador, más el V2C Trydan).
 """
 from __future__ import annotations
 
@@ -22,10 +23,15 @@ def _named(items) -> list[dict]:
             for it in items or []]
 
 
+def ids(value) -> list[str]:
+    """Una entidad o una lista de ellas."""
+    return [value] if isinstance(value, str) else [v for v in value or [] if v]
+
+
 def power_entities() -> list[str]:
     c = cfg()
-    ids = [c[k] for k in ("potencia_total", "tension", "intensidad") if c.get(k)]
-    return ids + [a["entidad"] for a in _named(c.get("aparatos"))]
+    ids_ = ids(c.get("potencia_total")) + [c[k] for k in ("tension", "intensidad") if c.get(k)]
+    return ids_ + [a["entidad"] for a in _named(c.get("aparatos"))]
 
 
 def _num(st: dict | None) -> float | None:
@@ -121,9 +127,18 @@ def hourly_from_power(rows: list[dict], start: datetime, now: datetime, zone: Zo
     return out
 
 
+def add_hours(series: list[list[dict]]) -> list[dict]:
+    """Suma hora a hora varias series con las mismas horas (una por contador)."""
+    series = [s for s in series if s]
+    if not series:
+        return []
+    return [{"time": hs[0]["time"], "kwh": round(sum(h["kwh"] for h in hs), 4)} for hs in zip(*series)]
+
+
 def build(states: dict[str, dict | None], hourly: list[dict], prices: list, now_price: float | None) -> dict:
     c = cfg()
-    total = _watts(states.get(c.get("potencia_total"))) if c.get("potencia_total") else None
+    watts = [w for w in (_watts(states.get(e)) for e in ids(c.get("potencia_total"))) if w is not None]
+    total = sum(watts) if watts else None
     devices = []
     for a in _named(c.get("aparatos")):
         st = states.get(a["entidad"])
