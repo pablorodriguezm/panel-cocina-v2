@@ -13,6 +13,12 @@ def test_accepts_the_shapes_shortcuts_can_send():
     assert [n for n, _ in reminders.parse({"listas": [{"lista": "A", "items": []}, {"lista": "B", "items": []}]})] == ["A", "B"]
 
 
+
+@pytest.mark.parametrize("empty", ["", None])
+def test_everything_bought_empties_the_list(empty):
+    assert reminders.parse({"lista": "Compra", "items": empty}) == [("Compra", [])]
+
+
 @pytest.mark.parametrize("bad", [[], {"items": ["x"]}, {"lista": "Compra", "items": 3}])
 def test_rejects_malformed(bad):
     with pytest.raises(ValueError):

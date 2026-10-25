@@ -49,7 +49,8 @@ def parse_list(raw: dict) -> tuple[str, list[dict]]:
     name = _text(raw.get("lista") or raw.get("nombre"))
     if not name:
         raise ValueError("Falta «lista» con el nombre de la lista de Recordatorios")
-    items = raw.get("items", [])
+    # Con todo completado, el Atajo puede mandar «items» vacío o null: la lista se queda vacía
+    items = raw.get("items") or []
     if isinstance(items, str):
         items = items.splitlines()
     if not isinstance(items, list):
