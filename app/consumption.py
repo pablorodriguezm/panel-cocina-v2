@@ -2,7 +2,8 @@
 
 - Potencia de ahora de la casa entera y de cada aparato o circuito (sensores en W de Home Assistant).
 - Consumo de hoy hora a hora, a partir del historial del contador de energía (kWh, total_increasing), y su coste
-  con el PVPC de cada hora.
+  con el PVPC de cada hora. Sin contador (el V2C Trydan solo da la potencia de la casa en W), se calcula integrando
+  el historial de la potencia total.
 """
 from __future__ import annotations
 
@@ -46,6 +47,25 @@ def _kwh(value: float, unit: str | None) -> float:
     return value / 1000 if (unit or "kWh").lower() == "wh" else value
 
 
+UTC = ZoneInfo("UTC")
+
+
+def _hours(start: datetime, now: datetime, zone: ZoneInfo) -> list[tuple[str, datetime, datetime]]:
+    """(etiqueta local, comienzo, fin) de cada hora de hoy hasta la de ahora, con comienzo y fin en UTC. Todo se
+    compara en UTC: Python compara por hora local dos fechas de la misma zona, y el día del cambio de hora
+    mezclaría las dos «02:00»."""
+    out, hour, now = [], start.astimezone(UTC), now.astimezone(UTC)
+    while hour <= now:
+        end = hour + timedelta(hours=1)
+        out.append((hour.astimezone(zone).replace(tzinfo=None).isoformat(timespec="minutes"), hour, end))
+        hour = end
+    return out
+
+
+def _utc(iso: str) -> datetime:
+    return datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(UTC)
+
+
 def hourly_from_history(rows: list[dict], start: datetime, now: datetime, zone: ZoneInfo, unit: str | None = "kWh") -> list[dict]:
     """kWh de cada hora de hoy a partir del historial de un contador que solo sube.
     `rows`: estados de Home Assistant con «state» y «last_changed» (UTC). Un reinicio del contador (baja de valor)
@@ -56,24 +76,48 @@ def hourly_from_history(rows: list[dict], start: datetime, now: datetime, zone: 
             v = float(r["state"])
         except (TypeError, ValueError, KeyError):
             continue
-        t = datetime.fromisoformat(r["last_changed"].replace("Z", "+00:00")).astimezone(zone)
-        points.append((t, _kwh(v, unit)))
+        points.append((_utc(r["last_changed"]), _kwh(v, unit)))
     points.sort(key=lambda p: p[0])
     if not points:
         return []
     out = []
-    hour = start
     i, last = 0, points[0][1]
-    while hour <= now:
-        end = hour + timedelta(hours=1)
+    for label, _, end in _hours(start, now, zone):
         used = 0.0
         while i < len(points) and points[i][0] < end:
             if points[i][1] >= last:
                 used += points[i][1] - last
             last = points[i][1]
             i += 1
-        out.append({"time": hour.replace(tzinfo=None).isoformat(timespec="minutes"), "kwh": round(used, 4)})
-        hour = (hour.astimezone(ZoneInfo("UTC")) + timedelta(hours=1)).astimezone(zone)  # bien también el día del cambio de hora
+        out.append({"time": label, "kwh": round(used, 4)})
+    return out
+
+
+def hourly_from_power(rows: list[dict], start: datetime, now: datetime, zone: ZoneInfo, unit: str | None = "W",
+                      first_hour: datetime | None = None) -> list[dict]:
+    """kWh de cada hora integrando el historial de un sensor de potencia: cada valor vale hasta el siguiente cambio.
+    «unavailable» cuenta como hueco (0) y los valores negativos (vertido de placas) no restan.
+    `first_hour`: solo devuelve las horas desde esa (las anteriores ya están calculadas)."""
+    factor = 1.0 if (unit or "W").lower() == "kw" else 1 / 1000
+    points = []
+    for r in rows:
+        try:
+            v = max(0.0, float(r["state"])) * factor
+        except (TypeError, ValueError, KeyError):
+            v = None
+        points.append((_utc(r["last_changed"]), v))
+    points.sort(key=lambda p: p[0])
+    now = now.astimezone(UTC)
+    # Tramos (desde, hasta, kW) con el valor constante
+    spans = [(t, points[i + 1][0] if i + 1 < len(points) else now, kw) for i, (t, kw) in enumerate(points) if kw]
+    out = []
+    for label, hour, end in _hours(start, now, zone):
+        if first_hour is not None and hour < first_hour.astimezone(UTC):
+            continue
+        end = min(end, now)
+        used = sum(kw * (min(b, end) - max(a, hour)).total_seconds() / 3600
+                   for a, b, kw in spans if b > hour and a < end)
+        out.append({"time": label, "kwh": round(used, 4)})
     return out
 
 

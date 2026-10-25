@@ -709,7 +709,7 @@ function renderConsumption() {
   const hours = c.horas || [];
   const maxK = Math.max(0.01, ...hours.map((h) => h.kwh));
   const priceOf = (t) => e?.today.find((p) => p.time === t)?.eur_kwh;
-  const slots = Array.from({ length: 24 }, (_, i) => hours[i]);
+  const slots = Array.from({ length: Math.max(24, hours.length) }, (_, i) => hours[i]); // 25 el día del cambio de hora
   const bars = slots.map((h) => h
     ? `<div class="bar" style="height:${Math.max(3, (h.kwh / maxK) * 100)}%;background:${priceOf(h.time) != null ? priceColor(priceOf(h.time), e.min, e.max) : "#A6998A"}"
         title="${h.time.slice(11)} · ${h.kwh.toLocaleString(ES)} kWh"></div>`
@@ -717,8 +717,8 @@ function renderConsumption() {
   const total = c.hoy_kwh != null ? `<span class="pill" style="--tint:#3F7FD9">${c.hoy_kwh.toLocaleString(ES, { maximumFractionDigits: 1 })} kWh${c.hoy_eur != null ? ` · ${c.hoy_eur.toLocaleString(ES, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : ""}</span>` : "";
   $("power-hours").innerHTML = head("📊", "Hoy, hora a hora", "#3F7FD9", total) + (hours.length
     ? `<div class="bars">${bars}</div><div class="axis"><span>0</span><span>3</span><span>6</span><span>9</span><span>12</span><span>15</span><span>18</span><span>21</span><span>23</span></div>
-       <p class="note" style="margin-top:8px">Cada barra, del color del precio de la luz a esa hora.</p>`
-    : `<p class="empty">Añade el contador de energía (consumo → energia_total) en config.yaml.</p>`);
+       <p class="note" style="margin-top:8px">Cada barra, del color del precio de la luz a esa hora.${c.horas_fuente === "potencia" ? " Calculado con la potencia de la casa." : ""}</p>`
+    : `<p class="empty">Añade la potencia de la casa (consumo → potencia_total) o un contador de energía (consumo → energia_total) en config.yaml.</p>`);
 
   const devs = c.aparatos || [];
   const ref = Math.max(1, c.ahora_w || 0, ...devs.map((d) => d.w || 0));
