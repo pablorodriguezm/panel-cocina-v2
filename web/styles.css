@@ -313,14 +313,36 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .dev.na { opacity: .5; }
 
 /* --- Tareas: Recordatorios --- */
-.tareas { height: 100%; display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--gap); }
+.tareas { height: 100%; display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: var(--gap); }
 .items { list-style: none; margin: 0; padding: 0; }
 .items li { padding: 9px 0; border-bottom: 1px solid var(--highlight); font-size: 19px; display: flex; gap: 10px; align-items: baseline; }
 .items li:last-child { border-bottom: 0; }
 .items li small { color: var(--ink-muted); font-size: 14px; }
 .items li .grow { flex: 1; min-width: 0; }
 .due { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); background: var(--highlight); padding: 1px 9px; border-radius: 999px; white-space: nowrap; }
+.due.from-panel { color: #E8604C; background: color-mix(in srgb, #E8604C 12%, transparent); }
 .due.late { color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); }
+
+/* --- Menú semanal: al pie de cada día y la lista de ingredientes --- */
+.meals { margin-top: auto; display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+  border-top: 1px solid var(--highlight); padding-top: 6px; }
+.meals span { font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden; }
+.meals i { font-style: normal; margin-right: 4px; }
+.week-tabs { margin-bottom: 8px; }
+.week-tabs .sg { padding: 7px 8px; font-size: 14px; }
+.mi-hint { margin: 0 0 4px; font-size: 13px; }
+#menu-list .sub-h { margin: 12px 0 2px; }
+#menu-list .items li { padding: 0; font-size: 17px; }
+.mi { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 0; }
+.mi .grow { flex: 1; min-width: 0; }
+.mi small { color: var(--ink-muted); font-size: 14px; }
+.mi-add { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none; font-size: 20px;
+  font-weight: 600; color: #2E9E5B; background: color-mix(in srgb, #2E9E5B 13%, transparent); }
+.mi-st { font-size: 12.5px; font-weight: 600; color: var(--ink-muted); white-space: nowrap; }
+.mi-st.ok { color: #2E9E5B; }
+.mi.moved .grow { opacity: .5; text-decoration: line-through; }
+.mi:disabled { opacity: .5; }
 
 /* --- Detalle de una cita --- */
 .modal { position: fixed; inset: 0; background: rgba(34, 29, 24, .28); display: grid; place-items: center; z-index: 10; }

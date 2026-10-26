@@ -33,6 +33,25 @@ Para la lista «Casa», repite las tres acciones en el mismo Atajo cambiando el 
 
 Pruébalo con ▶︎: el panel responde `{"ok": true, …}`. Si la lista no está en `config.yaml`, la respuesta lo avisa.
 
+### Lo que se pasa a la compra desde el panel
+
+En Tareas, la lista «Ingredientes del menú» deja tocar un ingrediente para pasarlo a la Compra. Sale en la Compra
+de la tablet al momento (con la etiqueta «desde el panel»), pero para que llegue a Recordatorios el Atajo tiene que
+recogerlo. Añade estas acciones **al principio** del Atajo, antes de «Buscar recordatorios»:
+
+1. **Obtener contenido de URL**:
+   - URL: `http://<ip-de-zimaos>:8090/api/recordatorios/recoger`
+   - Método: **POST**
+   - Cabeceras: `X-Panel-Token` → la misma clave
+2. **Obtener valor de diccionario** → *Valor* de **items** en *Contenido de URL*.
+3. **Repetir con cada** elemento de *Valor de diccionario*:
+   - **Añadir nuevo recordatorio** → *Elemento de repetición* en la lista **Compra**.
+4. Fin de la repetición. Después siguen las acciones de siempre (buscar, combinar y enviar).
+
+El panel entrega cada cosa una sola vez; en cuanto el Atajo envía la lista de la Compra, deja de enseñarla como
+«desde el panel» porque ya viene de Recordatorios. Mientras el Atajo no la haya recogido, tocarla otra vez en la
+tablet la quita.
+
 ## 3. Que se envíe solo
 
 Atajos → **Automatización** → «+» → *Crear automatización personal*:
@@ -51,7 +70,7 @@ Recordatorios en el iPhone y ciérralo para forzar un envío.
 
 ## Más adelante
 
-- Marcar como comprado desde la tablet: el panel apuntaría lo marcado y el Atajo, en su siguiente envío, lo
-  completaría en Recordatorios antes de leer la lista.
+- Marcar como comprado desde la tablet: igual que lo pasado desde el menú, el panel apuntaría lo marcado y el
+  Atajo lo completaría en Recordatorios antes de leer la lista.
 - Fechas y notas: con un bloque **Repetir con cada** que arme un diccionario `{titulo, notas, vence}` por recordatorio,
   el panel ya las acepta (`items` como lista de diccionarios).

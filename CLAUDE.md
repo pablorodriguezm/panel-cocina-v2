@@ -27,6 +27,10 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   entidades de config.yaml, con consigna acotada, modos y presets permitidos, y reproducir/pausar/volumen.
 - **Usuarios:** pantalla de bloqueo con avatar de Pablo y de Rim, **sin PIN**. Lo común igual para los dos;
   lo personal (de momento el trayecto al trabajo, cada uno a un destino distinto) según quién entra.
+- **Menú semanal** (app/menu.py, `docs/MENU.md`): comida y cena saludables de un recetario fijo
+  (`app/recetario.yaml`, para 2 personas), elegidas con un plan equilibrado por día. Solo se enseña en el panel
+  (Hoy, Calendario y Tareas), no se escribe en el calendario de Apple. Sus ingredientes de la semana se pasan a la
+  Compra tocándolos; el Atajo los recoge (`POST /api/recordatorios/recoger`) y los añade a Recordatorios.
 - **Estructura como el marco original:** barra de navegación a la derecha (avatar, Hoy, Calendario, Tiempo,
   Casa, Energía, Consumo, Tareas, Actualizar, Dormir y la hora) con una vista por sección. Las capturas de referencia están en
   github.com/pablorodriguezm/panel-cocina/tree/main/docs/capturas. No volver a una sola pantalla.
@@ -51,7 +55,8 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 
 ## Pendiente
 
-- Tachar cosas de la compra desde la tablet (el Atajo las completaría en Recordatorios): sin decidir.
+- Tachar cosas de la compra desde la tablet (el Atajo las completaría en Recordatorios, como ya recoge lo que se
+  pasa desde el menú): sin decidir.
 - Foto en los avatares y fotos del Synology en la pantalla de bloqueo.
 - Horario de pantalla y brillo con Fully Kiosk.
 - Más cosas por persona.
