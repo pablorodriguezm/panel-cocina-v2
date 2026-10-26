@@ -99,6 +99,11 @@ consumo:
     - {entidad: sensor.cocina_potencia, nombre: Cocina}
     - {entidad: sensor.v2c_trydan_charge_power, nombre: Cargador del coche}
 
+# Menú semanal (docs/MENU.md). Opcional: sin esta sección, para 2 personas y a la primera lista de recordatorios.
+menu:
+  personas: 2
+  lista_compra: Compra
+
 energia:
   recomendaciones:
     - {id: coche, nombre: Cargar el Tesla, emoji: "🚗", horas: 4}

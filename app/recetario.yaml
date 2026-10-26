@@ -1,0 +1,459 @@
+# Recetario del menú semanal: cocina mediterránea sencilla. Cantidades para 2 personas (el panel las escala si
+# en config.yaml «menu.personas» es otro número).
+#
+# - comida / cena: en qué momento del día puede salir.
+# - grupo: lo que usa el plan semanal para equilibrar (app/menu.py): legumbre, pescado, carne_blanca, carne_roja,
+#   cereal, huevo, verdura.
+# - ingredientes: {nombre, cantidad, unidad, seccion}. Para sumar la lista de la semana, el mismo ingrediente se
+#   escribe siempre igual. Unidades: g, ml, ud, diente, lata, manojo, barra.
+# - Lo de la despensa de siempre (aceite, sal, especias…) va en «basicos»: no sale en la lista para comprar.
+#
+# Para añadir o quitar platos basta con editar este fichero.
+
+basicos: [Aceite de oliva virgen extra, Sal, Pimienta, Pimentón dulce, Comino, Curry, Orégano, Laurel, Vinagre,
+          Harina, Salsa de soja]
+
+recetas:
+  # ---------- Comidas: legumbre ----------
+  - id: lentejas-verduras
+    nombre: Lentejas estofadas con verduras
+    comida: true
+    grupo: legumbre
+    ingredientes:
+      - {nombre: Lentejas pardinas, cantidad: 160, unidad: g, seccion: Despensa}
+      - {nombre: Zanahoria, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento verde, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Patata, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Tomate triturado, cantidad: 100, unidad: g, seccion: Despensa}
+      - {nombre: Pimentón dulce}
+      - {nombre: Laurel}
+
+  - id: garbanzos-espinacas
+    nombre: Garbanzos con espinacas y huevo
+    comida: true
+    grupo: legumbre
+    ingredientes:
+      - {nombre: Garbanzos cocidos, cantidad: 400, unidad: g, seccion: Despensa}
+      - {nombre: Espinacas frescas, cantidad: 200, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Comino}
+      - {nombre: Pimentón dulce}
+
+  - id: alubias-verduras
+    nombre: Alubias blancas con verduras
+    comida: true
+    grupo: legumbre
+    ingredientes:
+      - {nombre: Alubias blancas cocidas, cantidad: 400, unidad: g, seccion: Despensa}
+      - {nombre: Puerro, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Zanahoria, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Caldo de verduras, cantidad: 500, unidad: ml, seccion: Despensa}
+
+  - id: potaje-bacalao
+    nombre: Potaje de garbanzos con bacalao y espinacas
+    comida: true
+    grupo: legumbre
+    ingredientes:
+      - {nombre: Garbanzos cocidos, cantidad: 400, unidad: g, seccion: Despensa}
+      - {nombre: Bacalao desalado, cantidad: 200, unidad: g, seccion: Pescadería}
+      - {nombre: Espinacas frescas, cantidad: 150, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Tomate triturado, cantidad: 100, unidad: g, seccion: Despensa}
+      - {nombre: Pimentón dulce}
+
+  - id: lentejas-arroz-calabaza
+    nombre: Lentejas con arroz integral y calabaza
+    comida: true
+    grupo: legumbre
+    ingredientes:
+      - {nombre: Lentejas pardinas, cantidad: 140, unidad: g, seccion: Despensa}
+      - {nombre: Arroz integral, cantidad: 60, unidad: g, seccion: Despensa}
+      - {nombre: Calabaza, cantidad: 300, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 1, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Comino}
+
+  - id: ensalada-garbanzos
+    nombre: Ensalada completa de garbanzos y atún
+    comida: true
+    grupo: legumbre
+    ingredientes:
+      - {nombre: Garbanzos cocidos, cantidad: 400, unidad: g, seccion: Despensa}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pepino, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla morada, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Atún en conserva, cantidad: 2, unidad: lata, seccion: Despensa}
+      - {nombre: Vinagre}
+
+  # ---------- Comidas: pescado ----------
+  - id: merluza-horno
+    nombre: Merluza al horno con patatas y pimiento
+    comida: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Merluza en lomos, cantidad: 400, unidad: g, seccion: Pescadería}
+      - {nombre: Patata, cantidad: 3, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: salmon-arroz-brocoli
+    nombre: Salmón a la plancha con arroz integral y brócoli
+    comida: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Salmón en lomos, cantidad: 300, unidad: g, seccion: Pescadería}
+      - {nombre: Arroz integral, cantidad: 140, unidad: g, seccion: Despensa}
+      - {nombre: Brócoli, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: bacalao-tomate
+    nombre: Bacalao con tomate y patata cocida
+    comida: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Bacalao desalado, cantidad: 400, unidad: g, seccion: Pescadería}
+      - {nombre: Tomate triturado, cantidad: 400, unidad: g, seccion: Despensa}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento verde, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Patata, cantidad: 3, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+
+  - id: dorada-verduras
+    nombre: Dorada al horno con verduras
+    comida: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Dorada, cantidad: 2, unidad: ud, seccion: Pescadería}
+      - {nombre: Patata, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  # ---------- Comidas: carne blanca ----------
+  - id: pollo-boniato
+    nombre: Pollo al horno con boniato y calabacín
+    comida: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Muslos de pollo, cantidad: 4, unidad: ud, seccion: Carnicería}
+      - {nombre: Boniato, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 3, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Orégano}
+
+  - id: pavo-salteado
+    nombre: Pavo salteado con verduras y arroz integral
+    comida: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Pechuga de pavo, cantidad: 300, unidad: g, seccion: Carnicería}
+      - {nombre: Arroz integral, cantidad: 140, unidad: g, seccion: Despensa}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Champiñones, cantidad: 200, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Salsa de soja}
+
+  - id: pollo-curry
+    nombre: Pollo al curry suave con arroz basmati
+    comida: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Pechuga de pollo, cantidad: 350, unidad: g, seccion: Carnicería}
+      - {nombre: Arroz basmati, cantidad: 140, unidad: g, seccion: Despensa}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Zanahoria, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Leche de coco ligera, cantidad: 200, unidad: ml, seccion: Despensa}
+      - {nombre: Curry}
+
+  - id: pollo-champinones
+    nombre: Pollo guisado con champiñones y patata
+    comida: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Muslos de pollo, cantidad: 4, unidad: ud, seccion: Carnicería}
+      - {nombre: Champiñones, cantidad: 250, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Patata, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Caldo de verduras, cantidad: 250, unidad: ml, seccion: Despensa}
+      - {nombre: Laurel}
+
+  # ---------- Comidas: pasta, arroz y cereales ----------
+  - id: pasta-verduras-atun
+    nombre: Pasta integral con verduras y atún
+    comida: true
+    grupo: cereal
+    ingredientes:
+      - {nombre: Pasta integral, cantidad: 180, unidad: g, seccion: Despensa}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate triturado, cantidad: 300, unidad: g, seccion: Despensa}
+      - {nombre: Atún en conserva, cantidad: 2, unidad: lata, seccion: Despensa}
+      - {nombre: Queso rallado, cantidad: 30, unidad: g, seccion: Huevos y lácteos}
+
+  - id: arroz-verduras-gambas
+    nombre: Arroz con verduras y gambas
+    comida: true
+    grupo: cereal
+    ingredientes:
+      - {nombre: Arroz redondo, cantidad: 160, unidad: g, seccion: Despensa}
+      - {nombre: Gambas peladas, cantidad: 200, unidad: g, seccion: Pescadería}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Judías verdes, cantidad: 150, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Tomate triturado, cantidad: 100, unidad: g, seccion: Despensa}
+      - {nombre: Caldo de pescado, cantidad: 700, unidad: ml, seccion: Despensa}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Pimentón dulce}
+
+  - id: quinoa-verduras-asadas
+    nombre: Quinoa con verduras asadas y queso fresco
+    comida: true
+    grupo: cereal
+    ingredientes:
+      - {nombre: Quinoa, cantidad: 160, unidad: g, seccion: Despensa}
+      - {nombre: Berenjena, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Queso fresco, cantidad: 150, unidad: g, seccion: Huevos y lácteos}
+
+  # ---------- Comidas: carne roja (una vez a la semana) ----------
+  - id: ternera-guisada
+    nombre: Ternera guisada con verduras
+    comida: true
+    grupo: carne_roja
+    ingredientes:
+      - {nombre: Ternera para guisar, cantidad: 400, unidad: g, seccion: Carnicería}
+      - {nombre: Zanahoria, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Patata, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Guisantes congelados, cantidad: 150, unidad: g, seccion: Congelados}
+      - {nombre: Tomate triturado, cantidad: 100, unidad: g, seccion: Despensa}
+      - {nombre: Laurel}
+
+  - id: albondigas-tomate
+    nombre: Albóndigas de ternera en salsa de tomate con arroz
+    comida: true
+    grupo: carne_roja
+    ingredientes:
+      - {nombre: Carne picada de ternera, cantidad: 350, unidad: g, seccion: Carnicería}
+      - {nombre: Huevos, cantidad: 1, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Pan rallado, cantidad: 30, unidad: g, seccion: Despensa}
+      - {nombre: Tomate triturado, cantidad: 400, unidad: g, seccion: Despensa}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Arroz integral, cantidad: 120, unidad: g, seccion: Despensa}
+
+  # ---------- Cenas: verdura ----------
+  - id: crema-calabaza
+    nombre: Crema de calabaza y tostada con queso fresco
+    cena: true
+    grupo: verdura
+    ingredientes:
+      - {nombre: Calabaza, cantidad: 600, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Puerro, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Zanahoria, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Patata, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pan integral, cantidad: 1, unidad: barra, seccion: Panadería}
+      - {nombre: Queso fresco, cantidad: 100, unidad: g, seccion: Huevos y lácteos}
+
+  - id: parrillada-verduras
+    nombre: Parrillada de verduras con queso fresco
+    cena: true
+    grupo: verdura
+    ingredientes:
+      - {nombre: Berenjena, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Champiñones, cantidad: 200, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Espárragos verdes, cantidad: 1, unidad: manojo, seccion: Fruta y verdura}
+      - {nombre: Queso fresco, cantidad: 150, unidad: g, seccion: Huevos y lácteos}
+
+  - id: judias-patata-huevo
+    nombre: Judías verdes con patata y huevo cocido
+    cena: true
+    grupo: verdura
+    ingredientes:
+      - {nombre: Judías verdes, cantidad: 400, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Patata, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Ajo, cantidad: 1, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Pimentón dulce}
+
+  - id: crema-calabacin
+    nombre: Crema de calabacín y ensalada de tomate
+    cena: true
+    grupo: verdura
+    ingredientes:
+      - {nombre: Calabacín, cantidad: 3, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Puerro, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Patata, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Queso fresco, cantidad: 50, unidad: g, seccion: Huevos y lácteos}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+
+  - id: coliflor-gratinada
+    nombre: Coliflor gratinada con ensalada verde
+    cena: true
+    grupo: verdura
+    ingredientes:
+      - {nombre: Coliflor, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Leche, cantidad: 300, unidad: ml, seccion: Huevos y lácteos}
+      - {nombre: Queso rallado, cantidad: 60, unidad: g, seccion: Huevos y lácteos}
+      - {nombre: Lechuga, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Harina}
+
+  - id: ensalada-quinoa
+    nombre: Ensalada templada de quinoa, aguacate y huevo
+    cena: true
+    grupo: verdura
+    ingredientes:
+      - {nombre: Quinoa, cantidad: 120, unidad: g, seccion: Despensa}
+      - {nombre: Aguacate, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Rúcula, cantidad: 100, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  # ---------- Cenas: huevo ----------
+  - id: tortilla-calabacin
+    nombre: Tortilla de calabacín y cebolla con ensalada
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Huevos, cantidad: 5, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Lechuga, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+
+  - id: revuelto-champinones
+    nombre: Revuelto de champiñones y espárragos con pan integral
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Huevos, cantidad: 4, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Champiñones, cantidad: 250, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Espárragos verdes, cantidad: 1, unidad: manojo, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 1, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Pan integral, cantidad: 1, unidad: barra, seccion: Panadería}
+
+  - id: pisto-huevo
+    nombre: Pisto con huevo
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Huevos, cantidad: 4, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Berenjena, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento verde, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate triturado, cantidad: 300, unidad: g, seccion: Despensa}
+
+  - id: tortilla-espinacas
+    nombre: Tortilla de espinacas con tomate aliñado
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Huevos, cantidad: 4, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Espinacas frescas, cantidad: 150, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Tomate, cantidad: 3, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Queso fresco, cantidad: 80, unidad: g, seccion: Huevos y lácteos}
+
+  # ---------- Cenas: pescado ----------
+  - id: salmon-papillote
+    nombre: Salmón al papillote con verduras
+    cena: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Salmón en lomos, cantidad: 300, unidad: g, seccion: Pescadería}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Zanahoria, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Puerro, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: merluza-ensalada
+    nombre: Merluza a la plancha con ensalada
+    cena: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Merluza en lomos, cantidad: 350, unidad: g, seccion: Pescadería}
+      - {nombre: Lechuga, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pepino, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: lubina-horno
+    nombre: Lubina al horno con patata y cebolla
+    cena: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Lubina, cantidad: 2, unidad: ud, seccion: Pescadería}
+      - {nombre: Patata, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: gambas-calabacin
+    nombre: Salteado de gambas con calabacín y ajo
+    cena: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Gambas peladas, cantidad: 250, unidad: g, seccion: Pescadería}
+      - {nombre: Calabacín, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 3, unidad: diente, seccion: Fruta y verdura}
+
+  - id: caballa-pimientos
+    nombre: Caballa a la plancha con pimientos asados
+    cena: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Caballa, cantidad: 2, unidad: ud, seccion: Pescadería}
+      - {nombre: Pimiento rojo, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  # ---------- Cenas: carne blanca ----------
+  - id: pavo-pisto
+    nombre: Pechuga de pavo a la plancha con pisto
+    cena: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Pechuga de pavo, cantidad: 300, unidad: g, seccion: Carnicería}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate triturado, cantidad: 200, unidad: g, seccion: Despensa}
+
+  - id: wraps-pollo
+    nombre: Wraps integrales de pollo y verduras
+    cena: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Pechuga de pollo, cantidad: 250, unidad: g, seccion: Carnicería}
+      - {nombre: Tortillas de trigo integrales, cantidad: 4, unidad: ud, seccion: Panadería}
+      - {nombre: Lechuga, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Yogur natural, cantidad: 1, unidad: ud, seccion: Huevos y lácteos}
+
+  - id: brochetas-pollo
+    nombre: Brochetas de pollo con ensalada de tomate y aguacate
+    cena: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Pechuga de pollo, cantidad: 300, unidad: g, seccion: Carnicería}
+      - {nombre: Pimiento verde, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Aguacate, cantidad: 1, unidad: ud, seccion: Fruta y verdura}

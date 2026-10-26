@@ -21,7 +21,7 @@ Diseño y lógica basados en [eusonlito/Planify-Dashboard](https://github.com/eu
 
 **Pantalla de bloqueo:** el cielo cambia de color con la hora del día, con el reloj, la fecha, el tiempo, el precio de la luz de ahora y los avatares. Tocar un avatar abre el panel. No hay PIN.
 
-**Panel:** como el marco original, una barra a la derecha con una vista por sección. **Hoy**: hora y tiempo, lo próximo con cuenta atrás, los siete días siguientes y los resúmenes de trayecto, compra, luz y coche. **Calendario**: esta semana y la siguiente con el tiempo de cada día; al tocar una cita se ve el detalle. **Tiempo**: la curva de temperaturas por horas y los próximos días. **Casa**: la calefacción (termostato y válvulas) con su consigna y modo, el aire acondicionado, la temperatura de cada estancia y la música del Echo de la cocina. **Energía**: luz con mejores horas, el Tesla y los trayectos de los dos. **Consumo**: lo que gasta la casa ahora (W y €/h), cada aparato y el consumo de hoy hora a hora con su coste. **Tareas**: las listas de Recordatorios. **Dormir** vuelve a la pantalla de bloqueo. Tocando tu avatar, arriba a la derecha, vuelves al bloqueo, y lo hace solo tras 2 minutos sin tocar.
+**Panel:** como el marco original, una barra a la derecha con una vista por sección. **Hoy**: hora y tiempo, lo próximo con cuenta atrás, los siete días siguientes y los resúmenes de trayecto, compra, luz y coche. **Calendario**: esta semana y la siguiente con el tiempo de cada día y el menú; al tocar una cita o el menú se ve el detalle. **Tiempo**: la curva de temperaturas por horas y los próximos días. **Casa**: la calefacción (termostato y válvulas) con su consigna y modo, el aire acondicionado, la temperatura de cada estancia y la música del Echo de la cocina. **Energía**: luz con mejores horas, el Tesla y los trayectos de los dos. **Consumo**: lo que gasta la casa ahora (W y €/h), cada aparato y el consumo de hoy hora a hora con su coste. **Tareas**: las listas de Recordatorios y los ingredientes del menú semanal, que se pasan a la Compra tocándolos ([docs/MENU.md](docs/MENU.md)). **Dormir** vuelve a la pantalla de bloqueo. Tocando tu avatar, arriba a la derecha, vuelves al bloqueo, y lo hace solo tras 2 minutos sin tocar.
 
 **Mejores horas:** busca el tramo de N horas seguidas más barato desde ahora, hoy o mañana: 4 h para el coche y 2 h para el lavavajillas y la lavadora. Solo lo recomienda si está por debajo de la media de su día. Por la noche, si aún no se conoce el precio de mañana, dice que mejor esperar (REE lo publica sobre las 20:30). También marca las 3 horas más caras que quedan hoy.
 
@@ -63,6 +63,7 @@ PANEL_CONFIG=config/config.yaml PANEL_DEMO=1 uvicorn app.main:app --port 8090
 | `app/sources.py` | Lectura de Home Assistant, Red Eléctrica y Open-Meteo |
 | `app/energy.py` | PVPC y recomendaciones de horas (portado de `EnergyScreen.kt`) |
 | `app/reminders.py` | Recibe y guarda las listas de Recordatorios que envía el Atajo |
+| `app/menu.py`, `app/recetario.yaml` | Menú semanal saludable, sus ingredientes y lo pasado a la Compra |
 | `app/cache.py` | Caché con «stale-if-error»: si una fuente falla, se sigue viendo lo último |
 | `app/demo.py` | Datos de ejemplo (`PANEL_DEMO=1`) |
 | `web/` | La interfaz: HTML, CSS y JS sin compilar |

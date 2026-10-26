@@ -10,6 +10,7 @@ const CAL_NAME = "Rim y Pablo";
 const state = {
   users: [], user: null, view: "hoy", home: null, house: null, power: null, trips: {}, list: null, weatherDay: null,
   pending: {}, busy: null, houseError: null,
+  menu: [], menuWeek: 0, menuBusy: null,  // menú de esta semana y de la siguiente
   idleMs: 120_000, idleTimer: null,
 };
 
@@ -195,6 +196,7 @@ function go(view) {
   state.view = view;
   if (view === "casa") loadHouse();
   if (view === "consumo") loadConsumption();
+  if (view === "tareas") loadMenu();
   document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== view; });
   document.querySelectorAll(".nav[data-go]").forEach((b) => {
     const on = b.dataset.go === view;
@@ -233,6 +235,7 @@ function openEvent(ev) {
   } else {
     when += ` · ${hm(d)}${ev.endD > d ? "–" + hm(ev.endD) : ""}`;
   }
+  $("modal").querySelector(".modal-card").removeAttribute("style");
   $("modal-cal").textContent = CAL_NAME.toUpperCase();
   $("modal-title").textContent = ev.title;
   $("modal-when").textContent = when;
@@ -241,6 +244,80 @@ function openEvent(ev) {
   $("modal-close").focus();
 }
 function closeModal() { $("modal").hidden = true; }
+
+// ---------- Menú semanal ----------
+
+const MEALS = [["comida", "🍽️", "Comida"], ["cena", "🌙", "Cena"]];
+const menuFor = (d) => state.menu.flatMap((w) => w?.dias || []).find((x) => x.fecha === dayKey(d));
+
+function mealLines(day) {
+  const m = menuFor(day);
+  if (!m) return "";
+  return `<button class="meals" data-meal="${m.fecha}" aria-label="Menú del día">${MEALS.filter(([k]) => m[k])
+    .map(([k, ic]) => `<span><i>${ic}</i>${esc(m[k].nombre)}</span>`).join("")}</button>`;
+}
+
+function openMeal(fecha) {
+  const m = menuFor(new Date(fecha + "T12:00"));
+  if (!m) return;
+  const per = state.menu[0]?.personas || 2;
+  $("modal").querySelector(".modal-card").setAttribute("style", "--event:#2E9E5B");
+  $("modal-cal").textContent = "MENÚ DEL DÍA";
+  $("modal-title").textContent = cap(new Date(fecha + "T12:00").toLocaleDateString(ES, { weekday: "long", day: "numeric", month: "long" }));
+  $("modal-when").textContent = `Para ${per} ${per === 1 ? "persona" : "personas"} · los ingredientes, en Tareas`;
+  $("modal-extra").textContent = MEALS.filter(([k]) => m[k]).map(([k, ic, label]) =>
+    `${ic} ${label}: ${m[k].nombre}\n${m[k].ingredientes.map((i) => `${i.nombre} ${i.texto}`).join(" · ")}`).join("\n\n");
+  $("modal").hidden = false;
+  $("modal-close").focus();
+}
+
+function bindMeals(root) {
+  root.querySelectorAll("[data-meal]").forEach((b) => b.addEventListener("click", () => openMeal(b.dataset.meal)));
+}
+
+function renderMenuList() {
+  const w = state.menu[state.menuWeek];
+  const tabs = `<div class="seg week-tabs">${["Esta semana", "La siguiente"].map((t, i) =>
+    `<button class="sg${i === state.menuWeek ? " on" : ""}" data-week="${i}">${t}</button>`).join("")}</div>`;
+  if (!w) {
+    $("menu-list").innerHTML = head("🥗", "Ingredientes del menú", "#E8604C") + `<p class="empty">Cargando…</p>`;
+    return;
+  }
+  const n = w.compra.reduce((a, s) => a + s.items.length, 0);
+  const moved = w.compra.reduce((a, s) => a + s.items.filter((i) => i.pasado).length, 0);
+  const sections = w.compra.map((s) => `<p class="sub-h">${esc(s.seccion)}</p><ul class="items">${s.items.map((i) => {
+    const st = i.pasado ? `<span class="mi-st ok">✓ En la compra</span>` : i.en_lista ? `<span class="mi-st">ya en la lista</span>` : `<span class="mi-add">+</span>`;
+    return `<li><button class="mi${i.pasado ? " moved" : ""}" data-k="${esc(i.clave)}" ${state.menuBusy === i.clave ? "disabled" : ""}
+      title="${esc(i.platos.join(" · "))}"><span class="grow">${esc(i.nombre)} <small>${esc(i.texto)}</small></span>${st}</button></li>`;
+  }).join("")}</ul>`).join("");
+  $("menu-list").innerHTML = head("🥗", "Ingredientes del menú", "#E8604C", `<span class="pill" style="--tint:#E8604C">${moved}/${n}</span>`)
+    + tabs + `<p class="note mi-hint">Para ${w.personas} personas, comida y cena de toda la semana. Toca para pasarlo a «${esc(w.lista)}».</p>`
+    + `<div class="scroll">${sections}<p class="note">No incluye lo de la despensa de siempre: ${esc(w.basicos.join(", ").toLowerCase())}.</p></div>`;
+  $("menu-list").querySelectorAll("[data-week]").forEach((b) => b.addEventListener("click", () => { state.menuWeek = +b.dataset.week; renderMenuList(); }));
+  $("menu-list").querySelectorAll("[data-k]").forEach((b) => b.addEventListener("click", () => toShopping(b.dataset.k)));
+}
+
+async function toShopping(clave) {
+  if (state.menuBusy) return;
+  const week = state.menuWeek;
+  state.menuBusy = clave;
+  renderMenuList();
+  try {
+    const r = await fetch("/api/menu/compra", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ semana: week, clave }) });
+    if (r.ok) state.menu[week] = await r.json();
+  } catch (e) { console.warn(e); }
+  state.menuBusy = null;
+  await loadHome();  // la Compra ya lo enseña
+}
+
+async function loadMenu() {
+  await Promise.all([0, 1].map(async (i) => {
+    try { state.menu[i] = await getJSON(`/api/menu?semana=${i}`); }
+    catch (e) { console.warn(e); }
+  }));
+  render();
+}
 
 function evButtons(list) {
   const now = new Date();
@@ -311,7 +388,7 @@ function dayColumn(day, all, now, { weatherLine = false } = {}) {
   const w = d ? `<div class="dw"><span>${wmo(d.code)} ${Math.round(d.max)}° ${Math.round(d.min)}°</span><span class="rain${d.rain >= 40 ? " wet" : ""}">💧${d.rain}%</span></div>` : "";
   return `<div class="dcol${isToday ? " today" : ""}${past ? " past" : ""}">
     <div class="dhead"><span class="dn">${isToday ? "Hoy" : wdShort(day)}</span><span class="dd">${day.getDate()}</span></div>
-    ${w}${evButtons(list)}</div>`;
+    ${w}${evButtons(list)}${mealLines(day)}</div>`;
 }
 
 function renderWeek() {
@@ -321,6 +398,7 @@ function renderWeek() {
   for (let i = 0; i < 7; i++) html += dayColumn(addDays(now, i), all, now);
   $("week").innerHTML = html;
   bindEvents($("week"), all);
+  bindMeals($("week"));
 }
 
 function gauge(level, color, w = 150) {
@@ -383,6 +461,7 @@ function renderCalendar() {
   for (let i = 0; i < 14; i++) html += dayColumn(addDays(monday, i), all, now, { weatherLine: true });
   $("cal").innerHTML = html;
   bindEvents($("cal"), all);
+  bindMeals($("cal"));
 }
 
 // ---------- Tiempo ----------
@@ -755,7 +834,7 @@ function dueLabel(v, now) {
 
 function listCard(l, now, ic, tint) {
   const items = l.items.length
-    ? `<ul class="items">${l.items.map((i) => `<li><div class="grow">${esc(i.titulo)}${i.notas ? ` <small>${esc(i.notas)}</small>` : ""}</div>${dueLabel(i.vence, now)}</li>`).join("")}</ul>`
+    ? `<ul class="items">${l.items.map((i) => `<li><div class="grow">${esc(i.titulo)}${i.notas ? ` <small>${esc(i.notas)}</small>` : ""}</div>${i.panel ? `<span class="due from-panel">desde el panel</span>` : ""}${dueLabel(i.vence, now)}</li>`).join("")}</ul>`
     : `<p class="empty">${l.updated ? "No queda nada pendiente." : "Esta lista aún no ha llegado desde el iPhone."}</p>`;
   const old = l.updated && Date.now() / 1000 - l.updated > 12 * 3600
     ? `<p class="stale">Recibida por última vez ${relDay(new Date(l.updated * 1000), now)} a las ${hm(new Date(l.updated * 1000))}</p>` : "";
@@ -785,7 +864,7 @@ function render() {
     case "casa": renderHouse(); break;
     case "energia": renderEnergy(); renderCar(); renderTrips(); break;
     case "consumo": renderConsumption(); break;
-    case "tareas": renderLists(); break;
+    case "tareas": renderLists(); renderMenuList(); break;
   }
 }
 
@@ -834,12 +913,14 @@ async function start() {
   let resizing;
   addEventListener("resize", () => { clearTimeout(resizing); resizing = setTimeout(render, 150); });
   await loadHome();
+  loadMenu();
   loadHouse();
   setInterval(tick, 10_000);
   // La casa cambia más a menudo (alguien enciende el aire, cambia la canción): cada 15 s mientras se mira
   setInterval(() => { if (state.user && state.view === "casa") loadHouse(); }, 15_000);
   setInterval(() => { if (state.user && state.view === "consumo") loadConsumption(); }, 15_000);
   setInterval(() => { loadHome(); if (state.user) loadTrips(); }, REFRESH_MS);
+  setInterval(loadMenu, 30 * 60_000);  // cambia el lunes; lo pasado a la compra se recoge al tocar
 }
 
 start();
