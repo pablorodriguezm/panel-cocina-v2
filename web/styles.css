@@ -184,6 +184,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .wf-chips { margin-left: auto; display: flex; gap: 8px; }
 .wf-chip { background: var(--highlight); border-radius: var(--r-md); padding: 8px 12px; text-align: center; font-size: 13px; color: var(--ink-soft); }
 .wf-chip b { display: block; font-size: 17px; color: var(--ink); font-weight: 600; }
+.wf-scroll, .wf-inner { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .curve { flex: 1; min-height: 0; margin-top: 10px; position: relative; }
 .curve svg { display: block; overflow: visible; }
 .curve text { font-size: 13px; fill: var(--ink); text-anchor: middle; font-family: inherit; }
@@ -340,17 +341,106 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .charging .cell .lvl { animation: none; }
 }
 
-/* Vertical o pantallas pequeñas: barra abajo y una columna con scroll */
-@media (max-width: 900px), (orientation: portrait) {
+/* ===== Móvil y vertical =====
+   La tablet (1280×800 en horizontal) no entra en ninguna de estas reglas: se ve como siempre.
+   En vertical (iPhone, o la tablet girada) la barra va abajo y las vistas son una columna con scroll; en el
+   iPhone en horizontal la barra sigue a la derecha, solo con iconos, y las vistas van en dos columnas. */
+@media (orientation: portrait), (orientation: landscape) and (max-height: 500px) {
   body { overflow: auto; }
-  #main { display: block; height: auto; min-height: 100%; padding-bottom: 84px; }
-  .rail { position: fixed; left: 0; right: 0; bottom: 0; flex-direction: row; justify-content: space-around; padding: 6px; z-index: 5; }
-  .rail .me { margin: 0; width: 44px; height: 44px; font-size: 18px; }
-  .nav { width: auto; padding: 6px 8px; }
-  .rail-clock { display: none; }
-  .hoy-top, .hoy-bottom, .casa, .tareas { display: flex; flex-direction: column; height: auto; }
-  .week, .cal { grid-template-columns: repeat(2, 1fr); grid-template-rows: none; }
   .view { height: auto; }
-  .card.fill { min-height: 300px; }
+  .nav[data-action], .rail-clock { display: none; }  /* Actualizar y Dormir: en el móvil, recargar y el avatar */
+  .card.fill { flex: none; overflow: visible; }
+  .scroll { overflow: visible; }
+  /* Las barras miden en % de su caja: sin una altura fija, salían planas */
+  .view .bars { flex: none; height: 170px; }
+  .mini .energy-mini .bars { flex: 1; height: 62px; }
+  .weather-card { min-width: 0; }
+  .casa, .tareas, .consumo { height: auto; }
+  .tareas { grid-template-columns: 1fr 1fr; }
+  /* Tiempo: las 24 horas se desplazan de lado si no caben */
+  .wf-scroll { overflow-x: auto; scrollbar-width: none; }
+  .wf-scroll::-webkit-scrollbar { display: none; }
+  .wf-inner { min-width: 720px; }
+  .curve { flex: none; height: 190px; }
+  .seg .sg { flex: 1 1 40%; }
+  .thermo { flex-wrap: wrap; }
+}
+
+@media (orientation: portrait) {
+  #main { display: block; height: auto; min-height: 100%;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+  .rail { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; flex-direction: row; justify-content: space-around;
+    gap: 0; padding: 6px max(6px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -1px 0 var(--line); }
+  .rail .me { margin: 0; width: 44px; height: 44px; font-size: 18px; box-shadow: 0 0 0 2px var(--card); }
+  .nav { flex: 1; width: auto; min-width: 0; max-width: 84px; padding: 6px 0; }
+  .offline { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+
+  .hoy-top, .hoy-bottom, .casa, .consumo, .tareas { display: flex; flex-direction: column; height: auto; }
+  .band { flex-wrap: wrap; padding: 16px 18px; row-gap: 12px; }
+  .band-weather { flex: 1 1 100%; }
+  .next { padding: 16px 18px; }
+  .week, .cal { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; }
+  .dcol { min-height: 110px; }
+  .mini { min-height: 120px; }
+  .card.fill { min-height: 0; }
+
+  .weather-card { padding: 18px; }
+  .wf-top { flex-wrap: wrap; }
+  .wf-chips { margin-left: 0; flex: 1 1 100%; }
+  .wf-chip { flex: 1; }
+  .wf-days { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+  .wf-day { padding: 6px 0; }
+  .wf-day .d { font-size: 12px; }
+  .wf-day b { font-size: 14px; }
+  .chips { grid-template-columns: repeat(2, 1fr); }
   .lock-clock { font-size: 28vw; }
+}
+
+/* iPhone en vertical: los nombres de la barra no caben, solo iconos */
+@media (orientation: portrait) and (max-width: 520px) {
+  :root { --gap: 10px; }
+  .nav span { display: none; }
+  .nav { padding: 9px 0; }
+  .nav .i { width: 26px; height: 26px; }
+  .card { padding: 14px 16px; }
+  .band-clock { font-size: 64px; }
+  .wday .icon { font-size: 18px; }
+  .wnow .t { font-size: 24px; }
+  .huge { font-size: 60px; }
+  .pnow b { font-size: 64px; }
+  .lock-weather { font-size: 20px; }
+  .lock-date { font-size: 24px; }
+  .avatar .face { width: 104px; height: 104px; font-size: 46px; }
+}
+
+/* iPhone en horizontal: barra a la derecha solo con iconos y vistas en dos columnas */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root { --gap: 10px; }
+  #main { grid-template-columns: 1fr calc(60px + env(safe-area-inset-right, 0px)); }
+  .content { overflow-y: auto; scrollbar-width: none; padding-left: max(var(--gap), env(safe-area-inset-left, 0px)); }
+  .rail { padding: 8px env(safe-area-inset-right, 0px) 8px 0; gap: 0; justify-content: space-evenly; }
+  .rail .me { width: 40px; height: 40px; font-size: 17px; margin-bottom: 0; box-shadow: 0 0 0 2px var(--card); }
+  .nav { width: 48px; padding: 7px 0; }
+  .nav span { display: none; }
+
+  .hoy-top { flex-direction: column; height: auto; }
+  .band { padding: 12px 18px; }
+  .next { padding: 14px 18px; }
+  .week { flex: none; height: 300px; }
+  .cal { height: auto; grid-template-rows: repeat(2, 260px); }
+  .casa { grid-template-columns: 1fr 1fr; }
+  .casa > .col:nth-child(3) { grid-column: span 2; }
+  .card.fill { min-height: 0; }
+  .weather-card { padding: 16px 20px; }
+
+  #lock { flex-direction: row; align-items: flex-end; padding: 5vh max(5vw, env(safe-area-inset-left, 0px)) 6vh; }
+  .lock-clock { font-size: 34vh; }
+  .lock-date { font-size: 22px; }
+  .lock-weather { font-size: 18px; margin-top: 12px; }
+  .lock-weather .big { font-size: 30px; }
+  .lock-bottom { align-items: flex-end; }
+  .avatars { gap: 16px; }
+  .avatar .face { width: 88px; height: 88px; font-size: 38px; }
+  .avatar .name { font-size: 18px; }
 }

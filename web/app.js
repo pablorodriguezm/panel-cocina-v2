@@ -434,11 +434,18 @@ function renderWeatherFull() {
         <div class="wf-chip">Viento<b>${wind}</b></div>
       </div>
     </div>
-    <div class="curve" id="curve"></div>
-    <div class="hours">${hours}</div>
+    <div class="wf-scroll"><div class="wf-inner">
+      <div class="curve" id="curve"></div>
+      <div class="hours">${hours}</div>
+    </div></div>
     <div class="wf-days">${days}</div>`;
   $("weather-full").querySelectorAll(".wf-day").forEach((b) => b.addEventListener("click", () => { state.weatherDay = b.dataset.day; renderWeatherFull(); }));
   drawCurve(temps, isToday ? now.getHours() : null);
+  // En el móvil las 24 horas no caben: se abre con la hora de ahora a la vista
+  const scroller = $("weather-full").querySelector(".wf-scroll");
+  if (isToday && scroller.scrollWidth > scroller.clientWidth) {
+    scroller.scrollLeft = (now.getHours() / 24) * scroller.scrollWidth - scroller.clientWidth / 3;
+  }
 }
 
 // Curva de temperaturas del día (00 a 23), dibujada al tamaño real del hueco para que el texto no se deforme
@@ -823,6 +830,9 @@ async function start() {
   } catch (e) { console.warn(e); $("offline").hidden = false; }
   renderAvatars();
   ["pointerdown", "keydown"].forEach((ev) => document.addEventListener(ev, resetIdle, { passive: true }));
+  // Al girar el móvil, la curva del tiempo se vuelve a dibujar al tamaño nuevo
+  let resizing;
+  addEventListener("resize", () => { clearTimeout(resizing); resizing = setTimeout(render, 150); });
   await loadHome();
   loadHouse();
   setInterval(tick, 10_000);

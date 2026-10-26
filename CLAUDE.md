@@ -45,7 +45,9 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   tampoco se sube.
 - Antes de un PR: `python -m pytest -q`. Para ver la interfaz sin Home Assistant:
   `PANEL_CONFIG=config/config.example.yaml PANEL_DATA=/tmp/panel PANEL_DEMO=1 uvicorn app.main:app --port 8090`
-- Cambios visuales: comprueba a 1280×800 y enseña capturas.
+- Cambios visuales: comprueba a 1280×800 y enseña capturas. También se abre desde el iPhone: comprueba que nada
+  se corte a 390×844 (vertical) y 844×390 (horizontal). Lo del móvil va en `@media` al final de `web/styles.css`;
+  la tablet en horizontal no entra en ninguna de esas reglas.
 
 ## Pendiente
 
