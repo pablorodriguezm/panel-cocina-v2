@@ -6,7 +6,7 @@
 - Solo se enseña en el panel (Hoy, Calendario y Tareas): no se escribe en el calendario de Apple.
 - Los ingredientes de la semana se suman y se pueden pasar a la lista de la compra tocándolos. Lo pasado queda
   «pendiente» en el panel (sale ya en la Compra) hasta que el Atajo lo recoge (`POST /api/recordatorios/recoger`),
-  lo añade a Recordatorios y vuelve a enviar la lista.
+  lo añade a Recordatorios y vuelve a enviar la lista. Si en ese envío no viene, se vuelve a ofrecer.
 """
 from __future__ import annotations
 
@@ -178,6 +178,7 @@ class Store:
     def __init__(self, path: Path | None = None):
         self.path = path or DATA_PATH
         self.pending: list[dict] = []
+        self.last_collect: dict | None = None
         try:
             self.pending = json.loads(self.path.read_text(encoding="utf-8")).get("pendientes", [])
         except (OSError, ValueError, AttributeError):
@@ -213,17 +214,36 @@ class Store:
         """Lo que el Atajo tiene que añadir a Recordatorios; queda marcado como entregado."""
         out = [p["titulo"] for p in self.pending if not p["entregado"]]
         for p in self.pending:
-            p["entregado"] = True
+            if not p["entregado"]:
+                p.update(entregado=True, entregado_t=time.time())
+        self.last_collect = {"t": time.time(), "items": len(out)}
         if out:
             self._save()
         return out
 
-    def shopping_list_arrived(self) -> None:
-        """Llega la lista de la compra desde el iPhone: lo entregado ya va dentro (o ya se ha comprado)."""
-        before = len(self.pending)
-        self.pending = [p for p in self.pending if not p["entregado"]]
-        if len(self.pending) != before:
+    def shopping_list_arrived(self, titles: list[str]) -> None:
+        """Llega la lista de la compra desde el iPhone. Lo entregado que viene dentro ya es de Recordatorios y deja de
+        ser del panel. Lo entregado que no viene es que el Atajo no llegó a añadirlo (el envío va justo después de
+        recogerlo): vuelve a pendiente para que lo recoja en la siguiente vuelta, en vez de perderse."""
+        have = {norm(t) for t in titles}
+        changed = False
+        for p in list(self.pending):
+            if not p["entregado"]:
+                continue
+            changed = True
+            if norm(p["titulo"]) in have:
+                self.pending.remove(p)
+            else:
+                p.update(entregado=False, fallos=p.get("fallos", 0) + 1)
+        if changed:
             self._save()
+
+    def status(self) -> dict:
+        """Para /api/salud: si el Atajo recoge y lo que no ha llegado a Recordatorios."""
+        return {"pendientes": [p["titulo"] for p in self.pending if not p["entregado"]],
+                "entregados": [p["titulo"] for p in self.pending if p["entregado"]],
+                "sin_llegar": {p["titulo"]: p["fallos"] for p in self.pending if p.get("fallos")},
+                "ultima_recogida": self.last_collect}
 
     def merge_into(self, lists: list[dict]) -> list[dict]:
         """Añade a la lista de la compra lo pasado desde el panel que aún no ha llegado en la lista del iPhone."""

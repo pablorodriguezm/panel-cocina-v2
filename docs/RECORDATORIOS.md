@@ -48,9 +48,12 @@ recogerlo. Añade estas acciones **al principio** del Atajo, antes de «Buscar r
    - **Añadir nuevo recordatorio** → *Elemento de repetición* en la lista **Compra**.
 4. Fin de la repetición. Después siguen las acciones de siempre (buscar, combinar y enviar).
 
-El panel entrega cada cosa una sola vez; en cuanto el Atajo envía la lista de la Compra, deja de enseñarla como
-«desde el panel» porque ya viene de Recordatorios. Mientras el Atajo no la haya recogido, tocarla otra vez en la
-tablet la quita.
+Cuando el Atajo envía la lista de la Compra, lo que ya viene dentro deja de salir como «desde el panel», porque ya
+es de Recordatorios. Lo que no viene es que el Atajo no llegó a añadirlo: vuelve a quedar pendiente y se recoge en
+la siguiente vuelta. Mientras esté pendiente, tocarlo otra vez en la tablet lo quita.
+
+Si algo no llega, abre `http://<ip-de-zimaos>:8090/api/salud` en el navegador. En `menu_a_la_compra` se ve lo
+pendiente, cuándo recogió el Atajo por última vez y, en `sin_llegar`, lo que el Atajo recogió pero no añadió.
 
 ## 3. Que se envíe solo
 

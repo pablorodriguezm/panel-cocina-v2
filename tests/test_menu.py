@@ -107,7 +107,12 @@ def test_store_flow_from_tablet_to_reminders(tmp_path):
     assert s.collect() == ["Lentejas pardinas (300 g)"]
     assert s.collect() == []  # no se añade dos veces a Recordatorios
     assert s.toggle("2026-10-26", item) is True  # ya entregado: no se puede quitar desde el panel
-    s.shopping_list_arrived()
+    # El Atajo no llegó a añadirlo: la lista llega sin él y se vuelve a ofrecer, no se pierde
+    s.shopping_list_arrived(["Pan"])
+    assert s.merge_into(lists)[0]["items"][-1]["titulo"] == "Lentejas pardinas (300 g)"
+    assert s.status()["sin_llegar"] == {"Lentejas pardinas (300 g)": 1}
+    assert s.collect() == ["Lentejas pardinas (300 g)"]
+    s.shopping_list_arrived(["Pan", "lentejas pardinas (300 g)"])  # esta vez sí ha llegado
     assert s.pending == [] and s.merge_into(lists) == lists
 
 
