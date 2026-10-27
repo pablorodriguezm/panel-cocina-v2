@@ -53,6 +53,14 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   se corte a 390×844 (vertical) y 844×390 (horizontal). Lo del móvil va en `@media` al final de `web/styles.css`;
   la tablet en horizontal no entra en ninguna de esas reglas.
 
+## Wiki (Outline)
+
+El resumen para casa está en wiki.pablorodriguezm.es → colección «Repositorio Docker» → «Panel de cocina», con una
+página hija por tema (Despliegue y operación, Configuración, Consumo eléctrico, Integración con Recordatorios, Menú
+semanal, Acceso desde el móvil y Registro de cambios). Tono de documentación técnica: ficha inicial, resumen,
+tablas y resolución de problemas; sin secretos. Tras fusionar un cambio, actualiza «Registro de cambios» y la página
+del tema con la API de Outline (`documents.search` para encontrarla, `documents.update`; clave en `OUTLINE_API_KEY`).
+
 ## Pendiente
 
 - Tachar cosas de la compra desde la tablet (el Atajo las completaría en Recordatorios, como ya recoge lo que se
