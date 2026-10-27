@@ -155,6 +155,7 @@ async def health():
         out[key] = {"ok": not c["stale"] and c["data"] is not None, "error": c["error"], "updated": c["updated"]}
     out["recordatorios"] = {l["nombre"]: {"elementos": len(l["items"]), "updated": l["updated"]}
                             for l in state["reminders"].view(config.reminder_lists())}
+    out["menu_a_la_compra"] = state["menu"].status()
     return out
 
 
@@ -170,7 +171,8 @@ async def push_reminders(request: Request, x_panel_token: str | None = Header(de
     except ValueError as e:
         raise HTTPException(400, str(e))
     if menu.shopping_list_name() in updated:
-        state["menu"].shopping_list_arrived()
+        [shop] = state["reminders"].view([menu.shopping_list_name()])
+        state["menu"].shopping_list_arrived([i["titulo"] for i in shop["items"]])
     unknown = [n for n in updated if n not in config.reminder_lists()]
     return {"ok": True, "actualizadas": updated,
             "aviso": f"Listas que el panel no enseña (añádelas en config.yaml): {', '.join(unknown)}" if unknown else None}
