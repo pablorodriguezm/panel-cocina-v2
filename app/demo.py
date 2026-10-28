@@ -164,3 +164,21 @@ async def consumption(prices: list) -> dict:
                 "aparatos": [{"nombre": n, "w": w, "disponible": True} for n, w in
                              [("Cocina", 640.0), ("Climatización", 0.0), ("Cargador Tesla", 0.0), ("NAS", 84.2), ("Mesa Pablo", 32.4), ("Ventilador salón", 1.0)]]})
     return out
+
+
+async def get() -> dict:
+    """Calendarios extra de mentira: los festivos de verdad, una F1 y un partido esta semana."""
+    from . import calendarios
+    now = datetime.now(config.zone())
+    start, end = calendarios.window(now)
+    monday = start
+    at = lambda day, h, m=0: (monday + timedelta(days=day)).replace(hour=h, minute=m)  # noqa: E731
+    f1 = [calendarios._event(f"🏎️ {name} · Gran Premio de Demo", at(day, h), at(day, h) + timedelta(minutes=mins),
+                             calendario="Fórmula 1", color=calendarios.COLOR_F1, location="Circuito de Demo")
+          for name, day, h, mins in [("Libres 1", 4, 13, 60), ("Clasificación", 5, 16, 60), ("Carrera", 6, 15, 120)]]
+    futbol = [calendarios._event("Real Madrid - FC Barcelona", at(5, 21), at(5, 23), calendario="Real Madrid",
+                                 color="#7A5BC2", location="Santiago Bernabéu", description="LaLiga"),
+              calendarios._event("FC Barcelona - Inter", at(9, 21), at(9, 23), calendario="Barça",
+                                 color="#004D98", description="Champions League")]
+    data = calendarios.holidays(start, end) + f1 + futbol
+    return {"data": sorted(data, key=lambda e: e["start"]), "fuentes": {"demo": {"ok": True, "error": None}}}

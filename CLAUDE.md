@@ -31,6 +31,10 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   (`app/recetario.yaml`, para 2 personas), elegidas con un plan equilibrado por día. Solo se enseña en el panel
   (Hoy, Calendario y Tareas), no se escribe en el calendario de Apple. Sus ingredientes de la semana se pasan a la
   Compra tocándolos; el Atajo los recoge (`POST /api/recordatorios/recoger`) y los añade a Recordatorios.
+- **Calendarios extra** (app/calendarios.py, `docs/CALENDARIOS.md`): festivos de Madrid capital
+  (`app/festivos.yaml`, hay que añadir cada año), Fórmula 1 (todas las sesiones, API Jolpica) y partidos del
+  Real Madrid y del Barça (todas las competiciones, un .ics por equipo). Solo en el panel, no en el calendario de
+  Apple; «Lo próximo» sigue siendo solo de «RIM Y PABLO».
 - **Estructura como el marco original:** barra de navegación a la derecha (avatar, Hoy, Calendario, Tiempo,
   Casa, Energía, Consumo, Tareas, Actualizar, Dormir y la hora) con una vista por sección. Las capturas de referencia están en
   github.com/pablorodriguezm/panel-cocina/tree/main/docs/capturas. No volver a una sola pantalla.

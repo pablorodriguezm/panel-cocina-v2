@@ -169,6 +169,11 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .energy-mini .bars { height: 62px; flex: 1; }
 .energy-mini .pnow { position: absolute; }
 
+/* Festivos: el número del día en rojo y la etiqueta en suave */
+.dcol.festivo .dd, .dcol.festivo .dn { color: #C8243B; }
+.allday.festivo { color: #C8243B; background: color-mix(in srgb, #C8243B 12%, transparent); white-space: normal;
+  border-radius: 10px; line-height: 1.25; padding: 3px 9px; }
+
 /* --- Calendario: semana actual y la siguiente --- */
 .cal { height: 100%; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: 1fr 1fr; gap: 8px; }
 .cal .dcol { padding: 10px; }
