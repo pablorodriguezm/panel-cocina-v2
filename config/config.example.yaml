@@ -99,6 +99,15 @@ consumo:
     - {entidad: sensor.cocina_potencia, nombre: Cocina}
     - {entidad: sensor.v2c_trydan_charge_power, nombre: Cargador del coche}
 
+# Calendarios que solo enseña el panel, junto al de «RIM Y PABLO» (docs/CALENDARIOS.md). Opcional: sin esta sección
+# salen los festivos, la F1 y los partidos del Real Madrid y del Barça (todas las competiciones).
+calendarios_extra:
+  festivos: true      # nacionales, Comunidad de Madrid y Madrid capital (app/festivos.yaml)
+  f1: true            # todas las sesiones de cada Gran Premio (API pública Jolpica)
+  equipos:            # un calendario .ics por equipo; [] para quitarlos
+    - {nombre: Real Madrid, ics: "https://ics.fixtur.es/v2/real-madrid.ics", color: "#7A5BC2"}
+    - {nombre: Barça, ics: "https://ics.fixtur.es/v2/fc-barcelona.ics", color: "#004D98"}
+
 # Menú semanal (docs/MENU.md). Opcional: sin esta sección, para 2 personas y a la primera lista de recordatorios.
 menu:
   personas: 2

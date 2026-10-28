@@ -1,6 +1,6 @@
 """Panel de cocina: API de solo lectura para la tablet y la propia web.
 
-GET  /api/hogar           → lo común: tiempo, luz, calendario, recordatorios y coche
+GET  /api/hogar           → lo común: tiempo, luz, calendario (y festivos, F1 y fútbol), recordatorios y coche
 POST /api/recordatorios   → el Atajo del iPhone envía las listas de Recordatorios (cabecera X-Panel-Token)
 POST /api/recordatorios/recoger → el Atajo recoge lo pasado a la compra desde el panel (cabecera X-Panel-Token)
 GET  /api/menu?semana=0   → menú de la semana (0 esta, 1 la siguiente) y sus ingredientes
@@ -28,7 +28,7 @@ from fastapi.staticfiles import StaticFiles
 
 import asyncio
 
-from . import config, demo, energy, house, menu, reminders, sources
+from . import calendarios, config, demo, energy, house, menu, reminders, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -50,6 +50,7 @@ async def lifespan(_: FastAPI):
     state["weather"] = Cached("tiempo", 30 * 60, src.weather if src else lambda: sources.weather(client))
     state["prices"] = Cached("luz", 30 * 60, src.prices if src else lambda: sources.prices(client))
     state["calendar"] = Cached("calendario", 5 * 60, src.calendar_events if src else lambda: sources.calendar_events(ha))
+    state["extra"] = demo if DEMO else calendarios.Extra(client)
     state["reminders"] = reminders.Store()
     state["menu"] = menu.Store()
     if DEMO and not state["reminders"].lists:
@@ -101,6 +102,7 @@ async def home():
         "tiempo": await state["weather"].get(),
         "luz": _energy_view(await state["prices"].get()),
         "calendario": await state["calendar"].get(),
+        "calendarios_extra": {"data": (await state["extra"].get())["data"], "stale": False, "error": None},
         "recordatorios": {"data": _lists(), "stale": False, "error": None},
         "coche": await state["car"].get(),
     }
@@ -156,6 +158,7 @@ async def health():
     out["recordatorios"] = {l["nombre"]: {"elementos": len(l["items"]), "updated": l["updated"]}
                             for l in state["reminders"].view(config.reminder_lists())}
     out["menu_a_la_compra"] = state["menu"].status()
+    out["calendarios_extra"] = (await state["extra"].get())["fuentes"]
     return out
 
 

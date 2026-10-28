@@ -115,8 +115,10 @@ function dailyFor(d) {
     rain: w.daily.precipitation_probability_max[i], sunrise: w.daily.sunrise[i], sunset: w.daily.sunset[i] };
 }
 
+// El calendario de los dos y los extra que solo enseña el panel (festivos, F1 y fútbol), cada uno con su color
 function events() {
-  return (state.home?.calendario?.data || []).map((ev) => {
+  const own = (state.home?.calendario?.data || []).map((ev) => ({ ...ev, calendario: CAL_NAME, propio: true }));
+  return own.concat(state.home?.calendarios_extra?.data || []).map((ev) => {
     const start = ev.all_day ? new Date(ev.start + "T00:00") : new Date(ev.start);
     const end = ev.end ? (ev.all_day ? new Date(ev.end + "T00:00") : new Date(ev.end)) : start;
     return { ...ev, startD: start, endD: end };
@@ -235,8 +237,9 @@ function openEvent(ev) {
   } else {
     when += ` · ${hm(d)}${ev.endD > d ? "–" + hm(ev.endD) : ""}`;
   }
-  $("modal").querySelector(".modal-card").removeAttribute("style");
-  $("modal-cal").textContent = CAL_NAME.toUpperCase();
+  const card = $("modal").querySelector(".modal-card");
+  if (ev.color) card.setAttribute("style", `--event:${ev.color}`); else card.removeAttribute("style");
+  $("modal-cal").textContent = (ev.calendario || CAL_NAME).toUpperCase();
   $("modal-title").textContent = ev.title;
   $("modal-when").textContent = when;
   $("modal-extra").textContent = [ev.location, ev.description].filter(Boolean).join("\n");
@@ -322,9 +325,10 @@ async function loadMenu() {
 function evButtons(list) {
   const now = new Date();
   // Las de hoy que ya han terminado, atenuadas
+  const tint = (e) => e.color ? ` style="--event:${esc(e.color)}"` : "";
   return list.map((e) => e.all_day
-    ? `<button class="allday" data-ev="${e.idx}">${esc(e.title)}</button>`
-    : `<button class="ev${e.endD < now ? " done" : ""}" data-ev="${e.idx}"><span class="t">${hm(e.startD)}</span><div class="s">${esc(e.title)}</div></button>`).join("");
+    ? `<button class="allday${e.festivo ? " festivo" : ""}" data-ev="${e.idx}"${tint(e)}>${esc(e.title)}</button>`
+    : `<button class="ev${e.endD < now ? " done" : ""}" data-ev="${e.idx}"${tint(e)}><span class="t">${hm(e.startD)}</span><div class="s">${esc(e.title)}</div></button>`).join("");
 }
 function bindEvents(root, all) {
   root.querySelectorAll("[data-ev]").forEach((b) => b.addEventListener("click", () => openEvent(all[+b.dataset.ev])));
@@ -364,7 +368,7 @@ function renderBandWeather() {
 function renderNext() {
   const now = new Date();
   const all = events();
-  const next = all.find((e) => !e.all_day && e.endD > now);
+  const next = all.find((e) => e.propio && !e.all_day && e.endD > now);  // lo de los dos, no la F1 ni el fútbol
   const el = $("next");
   if (!next) {
     el.className = "next none";
@@ -386,7 +390,8 @@ function dayColumn(day, all, now, { weatherLine = false } = {}) {
   const past = startOfDay(day) < startOfDay(now);
   const d = weatherLine ? dailyFor(day) : null;
   const w = d ? `<div class="dw"><span>${wmo(d.code)} ${Math.round(d.max)}° ${Math.round(d.min)}°</span><span class="rain${d.rain >= 40 ? " wet" : ""}">💧${d.rain}%</span></div>` : "";
-  return `<div class="dcol${isToday ? " today" : ""}${past ? " past" : ""}">
+  const holiday = list.some((e) => e.festivo);
+  return `<div class="dcol${isToday ? " today" : ""}${past ? " past" : ""}${holiday ? " festivo" : ""}">
     <div class="dhead"><span class="dn">${isToday ? "Hoy" : wdShort(day)}</span><span class="dd">${day.getDate()}</span></div>
     ${w}${evButtons(list)}${mealLines(day)}</div>`;
 }
