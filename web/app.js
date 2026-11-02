@@ -590,6 +590,46 @@ function renderEnergy() {
   $("best").innerHTML = head("🕑", "Mejores horas", "#3BA55C") + `<div class="recs">${recs}${wait}${avoid}</div>`;
 }
 
+// ---------- Calefacción: ¿gas o aire? ----------
+
+const AIR = "#1E90E8", GAS = "#F08A3C";
+
+// Las horas en que conviene el gas, juntas: «19–22 h · mañana 8–10 h»
+function hourRanges(times, now) {
+  const out = [];
+  for (const t of times.map(localTime)) {
+    const last = out.at(-1);
+    if (last && +t - +last.end === 3600e3) last.end = t; else out.push({ start: t, end: t });
+  }
+  return out.map((r) => `${dayKey(r.start) === dayKey(now) ? "" : relDay(r.start, now) + " "}${r.start.getHours()}–${r.end.getHours() + 1} h`).join(" · ");
+}
+
+function renderHeatCost() {
+  const h = state.home?.calefaccion?.data;
+  const el = $("heating-cost");
+  if (!h) {
+    el.innerHTML = head("🔥", "Calefacción: ¿gas o aire?", GAS) + `<p class="empty">${state.home ? "Falta el precio de la luz o la previsión del tiempo." : "Cargando…"}</p>`;
+    return;
+  }
+  const now = new Date(), n = h.ahora, air = n.mejor === "aire";
+  const max = Math.max(h.gas.eur_kwh_calor, ...h.horas.map((x) => x.aire)) * 1.1;
+  const bars = h.horas.map((x) => `<div class="bar" style="height:${Math.max(3, (x.aire / max) * 100)}%;background:${x.mejor === "aire" ? AIR : GAS}"
+      title="${localTime(x.time).getHours()} h · ${x.temp}° · aire ${euros(x.aire)} €"></div>`).join("");
+  const ticks = h.horas.filter((_, i) => i % 6 === 0).map((x) => `<span>${localTime(x.time).getHours()}</span>`).join("");
+  const gasHours = h.horas_gas.length ? `Conviene el gas: <b>${hourRanges(h.horas_gas, now)}</b>.` : `En las próximas ${h.horas.length} horas, siempre el aire.`;
+  el.innerHTML = head("🔥", "Calefacción: ¿gas o aire?", GAS, `<span class="pill solid" style="--tint:${air ? AIR : GAS}">${air ? "Aire" : "Gas"}</span>`) + `
+    <div class="hc-now"><b>${air ? "Mejor el aire" : "Mejor la caldera"}</b>
+      <span>${Math.round(n.ahorro * 100)} % más barato ahora · ${Math.round(n.temp)}° fuera</span></div>
+    <div class="hc-cmp">
+      <div style="--tint:${AIR}"><small>❄️ Aire · COP ${n.cop.toLocaleString(ES)}</small><b>${euros(n.aire)} €</b></div>
+      <div style="--tint:${GAS}"><small>🔥 Caldera de gas</small><b>${euros(n.gas)} €</b></div>
+    </div>
+    <p class="note hc-unit">Por kWh de calor, con impuestos. Barras: el aire hora a hora; la línea, el gas.</p>
+    <div class="hc-chart"><div class="bars">${bars}</div><div class="hc-gas" style="bottom:${(h.gas.eur_kwh_calor / max) * 100}%"></div></div>
+    <div class="axis">${ticks}</div>
+    <p class="note hc-sum">${gasHours} Con ${Math.round(n.temp)}° fuera, el gas solo compensa con la luz por encima de ${euros(h.empate_pvpc)} €/kWh.</p>`;
+}
+
 function renderCar() {
   const block = state.home?.coche;
   const c = block?.data;
@@ -867,7 +907,7 @@ function render() {
     case "calendario": renderCalendar(); break;
     case "tiempo": renderWeatherFull(); break;
     case "casa": renderHouse(); break;
-    case "energia": renderEnergy(); renderCar(); renderTrips(); break;
+    case "energia": renderEnergy(); renderHeatCost(); renderCar(); renderTrips(); break;
     case "consumo": renderConsumption(); break;
     case "tareas": renderLists(); renderMenuList(); break;
   }

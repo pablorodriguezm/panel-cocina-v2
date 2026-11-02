@@ -108,6 +108,14 @@ calendarios_extra:
     - {nombre: Real Madrid, ics: "https://ics.fixtur.es/v2/real-madrid.ics", color: "#7A5BC2"}
     - {nombre: Barça, ics: "https://ics.fixtur.es/v2/fc-barcelona.ics", color: "#004D98"}
 
+# ¿Calentar con gas o con el aire? (docs/CALEFACCION.md). Opcional: sin esta sección, TUR.1 de app/gas.yaml,
+# caldera Bosch Condens 2300i W y aire Daikin ADEAS100A.
+calefaccion:
+  tarifa_gas: TUR.1
+  rendimiento_caldera: 0.90
+  cop: [[-10, 2.42], [7, 4.63]]   # Eurovent del ADEAS100A
+  factor_real: 0.90
+
 # Menú semanal (docs/MENU.md). Opcional: sin esta sección, para 2 personas y a la primera lista de recordatorios.
 menu:
   personas: 2

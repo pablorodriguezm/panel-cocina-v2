@@ -1,0 +1,12 @@
+# Precio del gas de la Tarifa de Último Recurso (TUR): término variable en €/kWh (PCS), sin impuestos.
+# La fija el Ministerio cada trimestre (resolución de la DGPEM en el BOE: 1 de enero, abril, julio y octubre).
+# Hay que añadir el trimestre nuevo cuando se publique; /api/salud avisa si el último tiene más de 3 meses.
+#
+# TUR.1: consumo hasta 5.000 kWh/año. TUR.2: de 5.000 a 15.000 kWh/año.
+# Comprobado con las facturas de Curenergía: 11/08–30/09/2026 y desde el 01/10/2026.
+
+impuesto_gas_eur_kwh: 0.00234   # impuesto sobre hidrocarburos: 0,65 €/GJ (el IVA, en app/calefaccion.py)
+
+TUR.1:
+  - {desde: 2026-07-01, eur_kwh: 0.04329798}
+  - {desde: 2026-10-01, eur_kwh: 0.0525259}

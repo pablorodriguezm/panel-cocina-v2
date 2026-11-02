@@ -31,6 +31,10 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   (`app/recetario.yaml`, para 2 personas), elegidas con un plan equilibrado por día. Solo se enseña en el panel
   (Hoy, Calendario y Tareas), no se escribe en el calendario de Apple. Sus ingredientes de la semana se pasan a la
   Compra tocándolos; el Atajo los recoge (`POST /api/recordatorios/recoger`) y los añade a Recordatorios.
+- **Calefacción: ¿gas o aire?** (app/calefaccion.py, `docs/CALEFACCION.md`): en Energía, qué sale más barato por
+  kWh de calor, ahora y hora a hora: gas TUR.1 (`app/gas.yaml`, hay que añadir cada trimestre) ÷ rendimiento de la
+  caldera Bosch Condens 2300i W, frente a PVPC con impuestos ÷ COP del Daikin ADEAS100A de conductos con la
+  temperatura de esa hora. Solo coste de uso, sin términos fijos. Solo aconseja, no enciende nada.
 - **Calendarios extra** (app/calendarios.py, `docs/CALENDARIOS.md`): festivos de Madrid capital
   (`app/festivos.yaml`, hay que añadir cada año), Fórmula 1 (todas las sesiones, API Jolpica) y partidos del
   Real Madrid y del Barça (todas las competiciones, un .ics por equipo). Solo en el panel, no en el calendario de
