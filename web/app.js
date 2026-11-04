@@ -615,7 +615,9 @@ function renderHeatCost() {
   const max = Math.max(h.gas.eur_kwh_calor, ...h.horas.map((x) => x.aire)) * 1.1;
   const bars = h.horas.map((x) => `<div class="bar" style="height:${Math.max(3, (x.aire / max) * 100)}%;background:${x.mejor === "aire" ? AIR : GAS}"
       title="${localTime(x.time).getHours()} h · ${x.temp}° · aire ${euros(x.aire)} €"></div>`).join("");
-  const ticks = h.horas.filter((_, i) => i % 6 === 0).map((x) => `<span>${localTime(x.time).getHours()}</span>`).join("");
+  // Unas seis marcas en el eje, también cuando solo quedan unas pocas horas con precio
+  const step = Math.max(1, Math.ceil(h.horas.length / 6));
+  const ticks = h.horas.filter((_, i) => i % step === 0).map((x) => `<span>${localTime(x.time).getHours()}</span>`).join("");
   const gasHours = h.horas_gas.length ? `Conviene el gas: <b>${hourRanges(h.horas_gas, now)}</b>.` : `En las próximas ${h.horas.length} horas, siempre el aire.`;
   el.innerHTML = head("🔥", "Calefacción: ¿gas o aire?", GAS, `<span class="pill solid" style="--tint:${air ? AIR : GAS}">${air ? "Aire" : "Gas"}</span>`) + `
     <div class="hc-now"><b>${air ? "Mejor el aire" : "Mejor la caldera"}</b>
@@ -627,7 +629,8 @@ function renderHeatCost() {
     <p class="note hc-unit">Por kWh de calor, con impuestos. Barras: el aire hora a hora; la línea, el gas.</p>
     <div class="hc-chart"><div class="bars">${bars}</div><div class="hc-gas" style="bottom:${(h.gas.eur_kwh_calor / max) * 100}%"></div></div>
     <div class="axis">${ticks}</div>
-    <p class="note hc-sum">${gasHours} Con ${Math.round(n.temp)}° fuera, el gas solo compensa con la luz por encima de ${euros(h.empate_pvpc)} €/kWh.</p>`;
+    <p class="note hc-sum">${gasHours} Ahora la luz está a <b>${euros(n.pvpc)} €/kWh</b>; con ${Math.round(n.temp)}° fuera,
+      el aire sale más barato mientras esté por debajo de <b>${euros(h.empate_pvpc)} €/kWh</b> (precio PVPC, como en «Luz hoy»).</p>`;
 }
 
 function renderCar() {
