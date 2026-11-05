@@ -10,10 +10,13 @@ import yaml
 
 CONFIG_PATH = Path(os.environ.get("PANEL_CONFIG", "/config/config.yaml"))
 
+# potencia_kw: la que puede tirar el cargador en cada periodo de la 2.0TD (en valle hay más potencia contratada).
+# kwh: lo que gasta un ciclo. Con cualquiera de los dos, «Mejores horas» dice lo que costaría el tramo.
 DEFAULT_RECOMMENDATIONS = [
-    {"id": "coche", "nombre": "Cargar el coche", "emoji": "🚗", "horas": 4},
-    {"id": "lavavajillas", "nombre": "Lavavajillas", "emoji": "🍽️", "horas": 2},
-    {"id": "lavadora", "nombre": "Lavadora", "emoji": "🧺", "horas": 2},
+    {"id": "coche", "nombre": "Cargar el coche", "emoji": "🚗", "horas": 4,
+     "potencia_kw": {"valle": 7.5, "llano": 4.5, "punta": 4.5}},
+    {"id": "lavavajillas", "nombre": "Lavavajillas", "emoji": "🍽️", "horas": 2, "kwh": 0.65},
+    {"id": "lavadora", "nombre": "Lavadora", "emoji": "🧺", "horas": 2, "kwh": 0.65},
 ]
 
 
@@ -26,6 +29,11 @@ def load() -> dict:
     cfg.setdefault("usuarios", [])
     cfg.setdefault("energia", {})
     cfg["energia"].setdefault("recomendaciones", DEFAULT_RECOMMENDATIONS)
+    # Las de config.yaml sin potencia ni consumo toman los de su id por defecto (coche, lavavajillas, lavadora)
+    defaults = {d["id"]: d for d in DEFAULT_RECOMMENDATIONS}
+    cfg["energia"]["recomendaciones"] = [{**{k: v for k, v in defaults.get(r.get("id"), {}).items()
+                                             if k in ("potencia_kw", "kwh")}, **r}
+                                         for r in cfg["energia"]["recomendaciones"]]
     cfg.setdefault("home_assistant", {})
     cfg["home_assistant"].setdefault("url", "http://homeassistant.local:8123")
     return cfg

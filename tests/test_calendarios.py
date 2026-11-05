@@ -125,3 +125,10 @@ async def test_extra_mixes_sources_and_a_failing_one_does_not_hide_the_rest(monk
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
+
+
+def test_national_holidays_for_the_2_0td_valley():
+    hs = calendarios.national_holidays()
+    assert date(2026, 12, 8) in hs and date(2027, 1, 1) in hs
+    assert date(2026, 4, 3) not in hs   # Viernes Santo cambia de fecha: no es valle
+    assert date(2026, 5, 15) not in hs  # San Isidro es local

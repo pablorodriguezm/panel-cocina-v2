@@ -579,15 +579,19 @@ function renderEnergy() {
 
   const recs = e.recommendations.filter((r) => r.tramo).map((r) => {
     const s = localTime(r.tramo.start), f = localTime(r.tramo.end);
+    // Lo que costaría: el coche, con la potencia de cada periodo; los electrodomésticos, un ciclo
+    const c = r.coste;
+    const cost = c ? `<span class="cost">≈ ${c.kwh.toLocaleString(ES, { maximumFractionDigits: c.kwh < 10 ? 2 : 0 })} kWh · ${c.eur.toLocaleString(ES, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €${c.periodos && r.id === "coche" ? ` · ${c.periodos.join(" y ")}` : ""}</span>` : "";
     return `<div class="rec ok"><span class="e">${esc(r.emoji)}</span><div class="t"><small>${esc(r.nombre)}</small>
-      <b>${relDay(s, now)} ${hm(s)}–${hm(f)}</b></div><span class="p">${euros(r.tramo.avg_eur_kwh)} €</span></div>`;
+      <b>${relDay(s, now)} ${hm(s)}–${hm(f)}</b>${cost}</div><span class="p">${euros(r.tramo.avg_eur_kwh)} €</span></div>`;
   }).join("");
   const wait = e.wait_for_tomorrow ? `<div class="rec"><span class="e">⏳</span><div class="t note">Lo que queda de hoy es caro: mejor esperar al precio de mañana (sale sobre las 20:30).</div></div>` : "";
   const avoid = e.avoid ? (() => {
     const s = localTime(e.avoid.start), f = localTime(e.avoid.end);
     return `<div class="rec bad"><span class="e">⛔</span><div class="t"><small>Mejor evitar</small><b>hoy ${hm(s)}–${hm(f)}</b></div><span class="p">${euros(e.avoid.avg_eur_kwh)} €</span></div>`;
   })() : "";
-  $("best").innerHTML = head("🕑", "Mejores horas", "#3BA55C") + `<div class="recs">${recs}${wait}${avoid}</div>`;
+  const costNote = e.recommendations.some((r) => r.coste) ? `<p class="note rec-note">Coste con impuestos. El coche, a la potencia de cada periodo (más en valle).</p>` : "";
+  $("best").innerHTML = head("🕑", "Mejores horas", "#3BA55C") + `<div class="recs">${recs}${wait}${avoid}</div>${costNote}`;
 }
 
 // ---------- Calefacción: ¿gas o aire? ----------

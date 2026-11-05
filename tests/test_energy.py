@@ -70,3 +70,55 @@ def test_gaps_are_not_windows():
     prices = [p for p in day(today, [0.01] * 24) if p.time.hour != 3]
     w = energy.cheapest_window(prices, today, 4)
     assert w.start.hour >= 4
+
+
+def test_periods_of_the_2_0td_tariff():
+    wed = datetime(2026, 11, 4)
+    assert [energy.period(wed.replace(hour=h)) for h in (0, 7, 8, 10, 14, 18, 22, 23)] == \
+        ["valle", "valle", "llano", "punta", "llano", "punta", "llano", "llano"]
+    assert energy.period(datetime(2026, 11, 7, 19)) == "valle"  # sábado
+    holiday = datetime(2026, 12, 8, 19)
+    assert energy.period(holiday) == "punta" and energy.period(holiday, frozenset({holiday.date()})) == "valle"
+
+
+def test_car_cost_uses_the_power_of_each_period():
+    # Miércoles de 6 a 10: dos horas de valle a 7,5 kW y dos de llano a 4,5 kW
+    prices = day(datetime(2026, 11, 4, 6), [0.08, 0.09, 0.12, 0.13])
+    w = energy.Window(datetime(2026, 11, 4, 6), datetime(2026, 11, 4, 10), 0.105)
+    car = {"potencia_kw": {"valle": 7.5, "llano": 4.5, "punta": 4.5}}
+    c = energy.window_cost(prices, w, car, tax_factor=1.272)
+    assert c["kwh"] == 24.0 and c["periodos"] == ["valle", "llano"]
+    assert c["eur"] == pytest.approx(round((7.5 * 0.08 + 7.5 * 0.09 + 4.5 * 0.12 + 4.5 * 0.13) * 1.272, 2))
+
+
+def test_appliance_cost_is_one_cycle_spread_over_its_hours():
+    prices = day(datetime(2026, 11, 5, 2), [0.07, 0.09])
+    w = energy.Window(datetime(2026, 11, 5, 2), datetime(2026, 11, 5, 4), 0.08)
+    c = energy.window_cost(prices, w, {"kwh": 0.65}, tax_factor=1.272)
+    assert c["kwh"] == 0.65 and c["eur"] == pytest.approx(round(0.65 * 0.08 * 1.272, 2))
+    assert energy.window_cost(prices, w, {}) is None
+
+
+def test_summary_adds_the_cost_to_each_recommendation():
+    prices = day(datetime(2026, 11, 5), [0.08] * 8 + [0.2] * 16)
+    s = energy.summary(prices, datetime(2026, 11, 5, 0, 30), [{"id": "lavadora", "nombre": "Lavadora", "horas": 2, "kwh": 0.65}],
+                       tax_factor=1.0)
+    assert s["recommendations"][0]["coste"] == {"kwh": 0.65, "eur": 0.05, "periodos": ["valle"]}
+
+
+def test_recommendations_in_config_take_the_default_power_and_consumption(tmp_path, monkeypatch):
+    from app import config
+    p = tmp_path / "config.yaml"
+    p.write_text("ubicacion: {latitud: 0, longitud: 0}\nenergia:\n  recomendaciones:\n"
+                 "    - {id: coche, nombre: Cargar el Tesla, horas: 4}\n"
+                 "    - {id: lavadora, nombre: Lavadora, horas: 2, kwh: 0.9}\n"
+                 "    - {id: horno, nombre: Horno, horas: 1}\n", encoding="utf-8")
+    monkeypatch.setattr(config, "CONFIG_PATH", p)
+    config.load.cache_clear()
+    try:
+        coche, lavadora, horno = config.load()["energia"]["recomendaciones"]
+        assert coche["potencia_kw"]["valle"] == 7.5 and coche["nombre"] == "Cargar el Tesla"
+        assert lavadora["kwh"] == 0.9  # lo de config.yaml manda
+        assert "kwh" not in horno and "potencia_kw" not in horno
+    finally:
+        config.load.cache_clear()
