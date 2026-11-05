@@ -103,6 +103,16 @@ def holidays(start: datetime, end: datetime) -> list[dict]:
     return out
 
 
+def national_holidays() -> frozenset[date]:
+    """Festivos nacionales de fecha fija: en la tarifa 2.0TD son valle todo el día (Viernes Santo no, que cambia)."""
+    out = set()
+    for days in holidays_file().values():
+        for h in days or []:
+            if h.get("ambito") == "nacional" and h["nombre"] != "Viernes Santo":
+                out.add(h["fecha"] if isinstance(h["fecha"], date) else date.fromisoformat(str(h["fecha"])))
+    return frozenset(out)
+
+
 def missing_holiday_years(now: datetime) -> list[int]:
     """Años que el panel enseña y que aún no están en festivos.yaml (para /api/salud)."""
     start, end = window(now)

@@ -17,7 +17,9 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
     Los envía un Atajo del iPhone a `POST /api/recordatorios` (`docs/RECORDATORIOS.md`). No propongas pyicloud.
 - **Home Assistant** es el pegamento (calendario, Tesla, trayectos con Waze). La tablet nunca habla con HA.
 - **Luz:** tarifa PVPC por horas. Precio de la API pública de REE; recomendaciones de mejores horas (coche 4 h,
-  lavavajillas y lavadora 2 h) que solo aconsejan, no encienden nada.
+  lavavajillas y lavadora 2 h) que solo aconsejan, no encienden nada. Cada tramo dice lo que costaría con impuestos:
+  el coche a la potencia de cada periodo de la 2.0TD (7 kW en valle, cargador y potencia contratada; 4,5 kW en llano y punta) y los
+  electrodomésticos con 0,65 kWh por ciclo.
 - **Coche:** solo el Tesla.
 - **Aire:** solo el Daikin «climate.daikinap69395_room_temperature» (a veces sin corriente); los de Salón y H. Diego no van.
 - **Precio de la luz:** el PVPC de REE coincide con el sensor `sensor.esios_pvpc` de HA. El día del cambio de hora

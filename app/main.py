@@ -81,7 +81,8 @@ def _energy_view(cached: dict) -> dict:
     prices = cached["data"] or []
     now = datetime.now(config.zone()).replace(tzinfo=None)
     recs = config.load()["energia"]["recomendaciones"]
-    return {**cached, "data": energy.summary(prices, now, recs) if prices else None}
+    return {**cached, "data": energy.summary(prices, now, recs, holidays=calendarios.national_holidays(),
+                                             tax_factor=calefaccion.electricity_with_taxes(1.0)) if prices else None}
 
 
 @app.get("/api/usuarios")

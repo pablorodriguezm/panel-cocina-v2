@@ -5,6 +5,8 @@ Portado de marco-familiar-dashboard (EnergyRepository.kt y EnergyScreen.kt):
   hasta entonces REE solo devuelve hoy.
 - Solo se recomienda un tramo si es barato de verdad: su media por debajo de la media de su día. Por la noche,
   sin el precio de mañana, lo que queda de hoy suele ser caro y se dice que mejor esperar.
+- Lo que costaría el tramo, con impuestos: el coche, a la potencia que deja cada periodo de la tarifa 2.0TD
+  («potencia_kw»); los electrodomésticos, con su consumo por ciclo («kwh») repartido en sus horas.
 """
 from __future__ import annotations
 
@@ -89,7 +91,36 @@ def most_expensive_today(prices: list[HourPrice], now: datetime, hours: int = 3)
     return Window(worst[0].time, worst[-1].time + timedelta(hours=1), sum(p.eur_kwh for p in worst) / hours)
 
 
-def summary(prices: list[HourPrice], now: datetime, recommendations: list[dict]) -> dict:
+def period(t: datetime, holidays: frozenset[date] = frozenset()) -> str:
+    """Periodo de la tarifa 2.0TD: valle de 0 a 8 h y todo el día en fin de semana y festivo nacional; punta de 10 a 14
+    y de 18 a 22 entre semana; el resto, llano."""
+    if t.weekday() >= 5 or t.date() in holidays or t.hour < 8:
+        return "valle"
+    return "punta" if 10 <= t.hour < 14 or 18 <= t.hour < 22 else "llano"
+
+
+def window_cost(prices: list[HourPrice], window: Window, rec: dict, holidays: frozenset[date] = frozenset(),
+                tax_factor: float = 1.0) -> dict | None:
+    """kWh y € (con impuestos) del tramo: a la potencia de cada periodo o con el consumo de un ciclo."""
+    hours = [p for p in prices if window.start <= p.time < window.end]
+    if not hours:
+        return None
+    if rec.get("kwh"):
+        kwh = float(rec["kwh"])
+        eur = sum(kwh / len(hours) * p.eur_kwh for p in hours)
+    elif rec.get("potencia_kw"):
+        pk = rec["potencia_kw"]
+        kw = (lambda t: float(pk.get(period(t, holidays), 0))) if isinstance(pk, dict) else (lambda t: float(pk))
+        kwh = sum(kw(p.time) for p in hours)
+        eur = sum(kw(p.time) * p.eur_kwh for p in hours)
+    else:
+        return None
+    periods = sorted({period(p.time, holidays) for p in hours}, key=["valle", "llano", "punta"].index)
+    return {"kwh": round(kwh, 2), "eur": round(eur * tax_factor, 2), "periodos": periods}
+
+
+def summary(prices: list[HourPrice], now: datetime, recommendations: list[dict], *,
+            holidays: frozenset[date] = frozenset(), tax_factor: float = 1.0) -> dict:
     """Todo lo que pinta la tarjeta de la luz: precio actual, día, mañana y recomendaciones."""
     today = now.date()
     tomorrow = today + timedelta(days=1)
@@ -101,7 +132,8 @@ def summary(prices: list[HourPrice], now: datetime, recommendations: list[dict])
     for r in recommendations:
         w = cheapest_window(prices, now, int(r["horas"]))
         recs.append({"id": r["id"], "nombre": r["nombre"], "emoji": r.get("emoji", ""), "horas": r["horas"],
-                     "tramo": w.to_json() if w else None})
+                     "tramo": w.to_json() if w else None,
+                     "coste": window_cost(prices, w, r, holidays, tax_factor) if w else None})
     avoid = most_expensive_today(prices, now)
 
     return {
