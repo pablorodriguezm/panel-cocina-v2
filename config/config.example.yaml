@@ -125,7 +125,7 @@ energia:
   # Con potencia_kw (la del cargador en cada periodo de la 2.0TD) o kwh (lo que gasta un ciclo), «Mejores horas»
   # dice lo que costaría el tramo con impuestos. Sin ellos, coche, lavavajillas y lavadora toman estos valores.
   recomendaciones:
-    - {id: coche, nombre: Cargar el Tesla, emoji: "🚗", horas: 4, potencia_kw: {valle: 7.5, llano: 4.5, punta: 4.5}}
+    - {id: coche, nombre: Cargar el Tesla, emoji: "🚗", horas: 4, potencia_kw: {valle: 7, llano: 4.5, punta: 4.5}}
     - {id: lavavajillas, nombre: Lavavajillas, emoji: "🍽️", horas: 2, kwh: 0.65}
     - {id: lavadora, nombre: Lavadora, emoji: "🧺", horas: 2, kwh: 0.65}
 

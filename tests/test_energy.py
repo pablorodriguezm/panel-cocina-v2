@@ -82,13 +82,13 @@ def test_periods_of_the_2_0td_tariff():
 
 
 def test_car_cost_uses_the_power_of_each_period():
-    # Miércoles de 6 a 10: dos horas de valle a 7,5 kW y dos de llano a 4,5 kW
+    # Miércoles de 6 a 10: dos horas de valle a 7 kW y dos de llano a 4,5 kW
     prices = day(datetime(2026, 11, 4, 6), [0.08, 0.09, 0.12, 0.13])
     w = energy.Window(datetime(2026, 11, 4, 6), datetime(2026, 11, 4, 10), 0.105)
-    car = {"potencia_kw": {"valle": 7.5, "llano": 4.5, "punta": 4.5}}
+    car = {"potencia_kw": {"valle": 7.0, "llano": 4.5, "punta": 4.5}}
     c = energy.window_cost(prices, w, car, tax_factor=1.272)
-    assert c["kwh"] == 24.0 and c["periodos"] == ["valle", "llano"]
-    assert c["eur"] == pytest.approx(round((7.5 * 0.08 + 7.5 * 0.09 + 4.5 * 0.12 + 4.5 * 0.13) * 1.272, 2))
+    assert c["kwh"] == 23.0 and c["periodos"] == ["valle", "llano"]
+    assert c["eur"] == pytest.approx(round((7.0 * 0.08 + 7.0 * 0.09 + 4.5 * 0.12 + 4.5 * 0.13) * 1.272, 2))
 
 
 def test_appliance_cost_is_one_cycle_spread_over_its_hours():
@@ -117,7 +117,7 @@ def test_recommendations_in_config_take_the_default_power_and_consumption(tmp_pa
     config.load.cache_clear()
     try:
         coche, lavadora, horno = config.load()["energia"]["recomendaciones"]
-        assert coche["potencia_kw"]["valle"] == 7.5 and coche["nombre"] == "Cargar el Tesla"
+        assert coche["potencia_kw"]["valle"] == 7.0 and coche["nombre"] == "Cargar el Tesla"
         assert lavadora["kwh"] == 0.9  # lo de config.yaml manda
         assert "kwh" not in horno and "potencia_kw" not in horno
     finally:

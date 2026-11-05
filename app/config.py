@@ -14,7 +14,7 @@ CONFIG_PATH = Path(os.environ.get("PANEL_CONFIG", "/config/config.yaml"))
 # kwh: lo que gasta un ciclo. Con cualquiera de los dos, «Mejores horas» dice lo que costaría el tramo.
 DEFAULT_RECOMMENDATIONS = [
     {"id": "coche", "nombre": "Cargar el coche", "emoji": "🚗", "horas": 4,
-     "potencia_kw": {"valle": 7.5, "llano": 4.5, "punta": 4.5}},
+     "potencia_kw": {"valle": 7.0, "llano": 4.5, "punta": 4.5}},
     {"id": "lavavajillas", "nombre": "Lavavajillas", "emoji": "🍽️", "horas": 2, "kwh": 0.65},
     {"id": "lavadora", "nombre": "Lavadora", "emoji": "🧺", "horas": 2, "kwh": 0.65},
 ]
