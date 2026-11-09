@@ -116,6 +116,10 @@ calefaccion:
   cop: [[-10, 2.42], [7, 4.63]]   # Eurovent del ADEAS100A
   factor_real: 0.90
 
+# Precio de la luz a la «Tarifa en vivo» de Shelly (docs/SHELLY.md). La URL va en SHELLY_TARIFA_URL (Portainer).
+shelly_tarifa:
+  con_impuestos: true
+
 # Menú semanal (docs/MENU.md). Opcional: sin esta sección, para 2 personas y a la primera lista de recordatorios.
 menu:
   personas: 2

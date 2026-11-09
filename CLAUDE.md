@@ -37,6 +37,9 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   kWh de calor, ahora y hora a hora: gas TUR.1 (`app/gas.yaml`, hay que añadir cada trimestre) ÷ rendimiento de la
   caldera Bosch Condens 2300i W, frente a PVPC con impuestos ÷ COP del Daikin ADEAS100A de conductos con la
   temperatura de esa hora. Solo coste de uso, sin términos fijos. Solo aconseja, no enciende nada.
+- **Tarifa en vivo de Shelly** (app/shelly.py, `docs/SHELLY.md`): cada hora el panel manda el PVPC de esa hora
+  (con impuestos) a Shelly Cloud, para que la app de Shelly calcule los costes con el precio real. Solo con
+  `SHELLY_TARIFA_URL`.
 - **Calendarios extra** (app/calendarios.py, `docs/CALENDARIOS.md`): festivos de Madrid capital
   (`app/festivos.yaml`, hay que añadir cada año), Fórmula 1 (todas las sesiones, API Jolpica) y partidos del
   Real Madrid y del Barça (todas las competiciones, un .ics por equipo). Solo en el panel, no en el calendario de
@@ -55,7 +58,8 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   No toques a mano la línea `image:` de ese fichero.
 - Despliegue real: ZimaOS en 192.168.1.34 (Portainer :9000, panel :8090), Home Assistant en 192.168.1.202.
   La configuración vive en el servidor en /DATA/AppData/panel-cocina/config/config.yaml.
-- Secretos solo en variables de Portainer o `.env` (ignorado): `HA_TOKEN`, `PANEL_TOKEN`. `config/config.yaml`
+- Secretos solo en variables de Portainer o `.env` (ignorado): `HA_TOKEN`, `PANEL_TOKEN`, `SHELLY_TARIFA_URL`
+  (copia en Bitwarden → ZIMA_OS). `config/config.yaml`
   tampoco se sube.
 - Antes de un PR: `python -m pytest -q`. Para ver la interfaz sin Home Assistant:
   `PANEL_CONFIG=config/config.example.yaml PANEL_DATA=/tmp/panel PANEL_DEMO=1 uvicorn app.main:app --port 8090`

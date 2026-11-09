@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 
 import asyncio
 
-from . import calefaccion, calendarios, config, demo, energy, house, menu, reminders, sources
+from . import calefaccion, calendarios, config, demo, energy, house, menu, reminders, shelly, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -63,7 +63,14 @@ async def lifespan(_: FastAPI):
         return await (demo.consumption(prices) if DEMO else sources.consumption(ha, prices))
     state["consumption"] = Cached("consumo", 30, _consumption)
     state["house"] = Cached("casa", 20, (lambda: demo.house()) if DEMO else (lambda: sources.house(ha)))
+    # Precio de cada hora a la «Tarifa en vivo» de Shelly Cloud (solo con SHELLY_TARIFA_URL y fuera de la demo)
+    async def _prices():
+        return (await state["prices"].get())["data"] or []
+    state["shelly"] = shelly.Sender(client, _prices)
+    task = asyncio.create_task(state["shelly"].run()) if shelly.url() and not DEMO else None
     yield
+    if task:
+        task.cancel()
     await client.aclose()
 
 
@@ -171,6 +178,7 @@ async def health():
     out["calendarios_extra"] = (await state["extra"].get())["fuentes"]
     gas_warning = calefaccion.stale_gas_price(datetime.now(config.zone()).date())
     out["precio_gas"] = {"ok": gas_warning is None, "error": gas_warning}
+    out["shelly_tarifa"] = state["shelly"].status
     return out
 
 
