@@ -1,7 +1,7 @@
 # Despliegue en ZimaOS con Portainer (stack desde el repositorio Git, ver docs/DESPLIEGUE.md).
 # Usa la imagen que construye GitHub Actions, no compila nada en el servidor.
 # La línea «image:» la reescribe el workflow en cada versión (etiqueta sha-…): no la edites a mano.
-# Las variables (HA_TOKEN, PANEL_TOKEN, PANEL_PORT) se ponen en Portainer, no aquí.
+# Las variables (HA_TOKEN, PANEL_TOKEN, SHELLY_TARIFA_URL, PANEL_PORT) se ponen en Portainer, no aquí.
 name: panel-cocina
 services:
   panel:
@@ -13,6 +13,7 @@ services:
       PANEL_DATA: /data
       HA_TOKEN: ${HA_TOKEN}
       PANEL_TOKEN: ${PANEL_TOKEN}
+      SHELLY_TARIFA_URL: ${SHELLY_TARIFA_URL:-}
     volumes:
       # Fuera del repositorio: config.yaml vive en el servidor (ruta habitual de ZimaOS)
       - /DATA/AppData/panel-cocina/config:/config:ro
