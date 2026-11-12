@@ -49,7 +49,9 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   Casa, Energía, Consumo, Tareas, Actualizar, Dormir y la hora) con una vista por sección. Las capturas de referencia están en
   github.com/pablorodriguezm/panel-cocina/tree/main/docs/capturas. No volver a una sola pantalla.
 - **Estilo:** paleta y tipografía de los repos de referencia (crema `#F7EEE2`, tarjetas `#FFFDF9`, Geist,
-  cabecera con el cielo según la hora). Al usuario le gustan; mantenlos.
+  cabecera con el cielo según la hora). Al usuario le gustan; mantenlos. Del atardecer al amanecer pasa solo a un
+  **modo oscuro** (misma paleta de acentos sobre fondo `#171411`; `pantalla.modo_oscuro`: auto, siempre o nunca).
+  Los colores van por variables CSS (`:root[data-theme="dark"]`): no pongas neutros fijos en el JS.
 
 ## Cómo se trabaja
 

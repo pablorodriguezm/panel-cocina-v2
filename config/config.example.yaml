@@ -138,3 +138,5 @@ energia:
 pantalla:
   # Vuelve a la pantalla de bloqueo tras estos segundos sin tocar.
   volver_al_bloqueo_s: 120
+  # auto: oscuro del atardecer al amanecer · siempre · nunca
+  modo_oscuro: auto

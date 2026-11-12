@@ -97,7 +97,9 @@ def _energy_view(cached: dict, car: dict | None = None) -> dict:
 @app.get("/api/usuarios")
 async def users():
     pantalla = config.load().get("pantalla") or {}
-    return {"usuarios": config.public_users(), "volver_al_bloqueo_s": int(pantalla.get("volver_al_bloqueo_s", 120))}
+    mode = str(pantalla.get("modo_oscuro", "auto")).lower()
+    return {"usuarios": config.public_users(), "volver_al_bloqueo_s": int(pantalla.get("volver_al_bloqueo_s", 120)),
+            "modo_oscuro": mode if mode in ("auto", "siempre", "nunca") else "auto"}
 
 
 def _lists() -> list[dict]:
