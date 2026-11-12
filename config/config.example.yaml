@@ -41,6 +41,8 @@ recordatorios:
 # compruébalos en Ajustes → Dispositivos → tu coche. Deja vacío lo que no tengas.
 coche:
   nombre: Tesla
+  bateria_kwh: 75          # capacidad útil: «Mejores horas» calcula lo que falta hasta el límite de carga
+  eficiencia_carga: 0.9    # de cada kWh de la red, lo que llega a la batería
   entidades:
     bateria: sensor.tesla_battery_level
     autonomia: sensor.tesla_battery_range

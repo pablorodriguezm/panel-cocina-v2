@@ -19,7 +19,8 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 - **Luz:** tarifa PVPC por horas. Precio de la API pública de REE; recomendaciones de mejores horas (coche 4 h,
   lavavajillas y lavadora 2 h) que solo aconsejan, no encienden nada. Cada tramo dice lo que costaría con impuestos:
   el coche a la potencia de cada periodo de la 2.0TD (7 kW en valle, cargador y potencia contratada; 4,5 kW en llano y punta) y los
-  electrodomésticos con 0,65 kWh por ciclo.
+  electrodomésticos con 0,65 kWh por ciclo. El tramo del coche dura lo que le falta a la batería hasta su límite de
+  carga (Model Y Gran Autonomía, 75 kWh); sin datos del coche, 4 h fijas.
 - **Coche:** solo el Tesla.
 - **Aire:** solo el Daikin «climate.daikinap69395_room_temperature» (a veces sin corriente); los de Salón y H. Diego no van.
 - **Precio de la luz:** el PVPC de REE coincide con el sensor `sensor.esios_pvpc` de HA. El día del cambio de hora

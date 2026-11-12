@@ -84,12 +84,14 @@ async def _heating() -> dict:
     return {"data": data, "stale": prices["stale"] or weather["stale"], "error": None}
 
 
-def _energy_view(cached: dict) -> dict:
+def _energy_view(cached: dict, car: dict | None = None) -> dict:
     prices = cached["data"] or []
     now = datetime.now(config.zone()).replace(tzinfo=None)
     recs = config.load()["energia"]["recomendaciones"]
+    c = config.load().get("coche") or {}
+    need = energy.car_need(car, float(c.get("bateria_kwh", 75)), float(c.get("eficiencia_carga", 0.9)))
     return {**cached, "data": energy.summary(prices, now, recs, holidays=calendarios.national_holidays(),
-                                             tax_factor=calefaccion.electricity_with_taxes(1.0)) if prices else None}
+                                             tax_factor=calefaccion.electricity_with_taxes(1.0), car=need) if prices else None}
 
 
 @app.get("/api/usuarios")
@@ -116,7 +118,7 @@ async def home():
     return {
         "ahora": datetime.now(config.zone()).isoformat(timespec="seconds"),
         "tiempo": await state["weather"].get(),
-        "luz": _energy_view(await state["prices"].get()),
+        "luz": _energy_view(await state["prices"].get(), (await state["car"].get())["data"]),
         "calefaccion": await _heating(),
         "calendario": await state["calendar"].get(),
         "calendarios_extra": {"data": (await state["extra"].get())["data"], "stale": False, "error": None},

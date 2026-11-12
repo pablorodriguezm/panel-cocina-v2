@@ -122,3 +122,41 @@ def test_recommendations_in_config_take_the_default_power_and_consumption(tmp_pa
         assert "kwh" not in horno and "potencia_kw" not in horno
     finally:
         config.load.cache_clear()
+
+
+CAR = {"id": "coche", "nombre": "Coche", "horas": 4, "potencia_kw": {"valle": 7.0, "llano": 4.5, "punta": 4.5}}
+
+
+def test_car_need_from_battery_and_limit():
+    assert energy.car_need({"bateria": 64, "limite_carga": 80}, 75, 0.9) == {"falta_kwh": 13.3, "bateria": 64, "limite": 80}
+    assert energy.car_need({"bateria": 82, "limite_carga": 80}, 75)["falta_kwh"] == 0
+    assert energy.car_need({"bateria": None, "limite_carga": 80}, 75) is None and energy.car_need(None, 75) is None
+
+
+def test_charge_window_lasts_what_the_battery_needs():
+    # Jueves: madrugada barata (valle, 7 kW) y día caro. 10,5 kWh son hora y media de valle
+    prices = day(datetime(2026, 11, 12), [0.10, 0.08, 0.06, 0.07, 0.09] + [0.2] * 19)
+    w, cost = energy.charge_window(prices, datetime(2026, 11, 12, 0, 10), 10.5, CAR, tax_factor=1.0)
+    assert (w.start, w.end) == (datetime(2026, 11, 12, 2), datetime(2026, 11, 12, 3, 30))
+    assert cost == {"kwh": 10.5, "eur": round(7 * 0.06 + 3.5 * 0.07, 2), "periodos": ["valle"]}
+    # De día va a 4,5 kW: los mismos kWh tardan más
+    w2, _ = energy.charge_window(day(datetime(2026, 11, 12, 8), [0.05] * 4 + [0.3] * 12), datetime(2026, 11, 12, 8), 9.0, CAR)
+    assert w2.end - w2.start == timedelta(hours=2)
+
+
+def test_charge_window_none_when_expensive_or_not_enough_hours():
+    prices = day(datetime(2026, 11, 12), [0.1] * 20 + [0.3] * 4)
+    assert energy.charge_window(prices, datetime(2026, 11, 12, 21), 5, CAR) is None      # lo que queda es caro
+    assert energy.charge_window(prices, datetime(2026, 11, 12, 23), 20, CAR) is None     # no caben 20 kWh
+
+
+def test_summary_sizes_the_car_charge_and_says_when_it_is_full():
+    prices = day(datetime(2026, 11, 12), [0.08] * 8 + [0.2] * 16)
+    s = energy.summary(prices, datetime(2026, 11, 12, 0, 5), [CAR], car={"falta_kwh": 14.0, "bateria": 63, "limite": 80})
+    r = s["recommendations"][0]
+    assert r["tramo"]["end"] == "2026-11-12T02:00" and r["coste"]["kwh"] == 14.0 and r["carga"]["completa"] is False
+    full = energy.summary(prices, datetime(2026, 11, 12, 21), [CAR], car={"falta_kwh": 0.0, "bateria": 80, "limite": 80})
+    assert full["recommendations"][0]["carga"]["completa"] and full["recommendations"][0]["tramo"] is None
+    assert full["wait_for_tomorrow"] is False  # coche lleno: no hay nada que esperar
+    # Sin datos del coche, como siempre: 4 horas fijas
+    assert "carga" not in energy.summary(prices, datetime(2026, 11, 12, 0, 5), [CAR])["recommendations"][0]
