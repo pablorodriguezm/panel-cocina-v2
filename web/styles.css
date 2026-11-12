@@ -99,6 +99,9 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   color: var(--ink-muted); font-size: 11.5px; }
 .nav .i { width: 24px; height: 24px; }
 .nav.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(34, 29, 24, .07); }
+.nav.alerts { position: relative; color: var(--red); }
+.nav.alerts em { position: absolute; top: 2px; right: 16px; min-width: 17px; height: 17px; border-radius: 999px; padding: 0 4px;
+  background: var(--red); color: #fff; font-size: 11px; font-weight: 600; font-style: normal; line-height: 17px; text-align: center; }
 .nav:active { background: color-mix(in srgb, var(--card) 60%, transparent); }
 .rail-clock { margin-top: auto; font-family: "Geist Mono", ui-monospace, monospace; font-size: 30px; line-height: .95; text-align: center; letter-spacing: -0.04em; }
 .rail-clock span { display: block; }
@@ -446,6 +449,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   :root { --gap: 10px; }
   .nav span { display: none; }
   .nav { padding: 9px 0; }
+  .nav.alerts em { right: 2px; }
   .nav .i { width: 26px; height: 26px; }
   .card { padding: 14px 16px; }
   .band-clock { font-size: 64px; }

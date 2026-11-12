@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 
 import asyncio
 
-from . import calefaccion, calendarios, config, demo, energy, house, menu, reminders, shelly, sources
+from . import avisos, calefaccion, calendarios, config, demo, energy, house, menu, reminders, shelly, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -122,7 +122,16 @@ async def home():
         "calendarios_extra": {"data": (await state["extra"].get())["data"], "stale": False, "error": None},
         "recordatorios": {"data": _lists(), "stale": False, "error": None},
         "coche": await state["car"].get(),
+        "avisos": await _alerts(),
     }
+
+
+async def _alerts() -> list[dict]:
+    return avisos.build(datetime.now(config.zone()),
+                        sources={k: await state[k].get() for k in avisos.NOMBRES},
+                        extra=(await state["extra"].get())["fuentes"],
+                        lists=state["reminders"].view(config.reminder_lists()),
+                        shelly=state["shelly"].status)
 
 
 @app.get("/api/usuario/{user_id}")
@@ -179,6 +188,7 @@ async def health():
     gas_warning = calefaccion.stale_gas_price(datetime.now(config.zone()).date())
     out["precio_gas"] = {"ok": gas_warning is None, "error": gas_warning}
     out["shelly_tarifa"] = state["shelly"].status
+    out["avisos"] = await _alerts()
     return out
 
 

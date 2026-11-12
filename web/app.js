@@ -209,7 +209,7 @@ function go(view) {
 }
 
 function setupRail() {
-  document.querySelectorAll(".nav").forEach((b) => {
+  document.querySelectorAll(".nav[data-go], .nav[data-action]").forEach((b) => {
     const name = b.dataset.go || b.dataset.action;
     b.innerHTML = `${icon(name)}<span>${LABELS[name]}</span>`;
     b.addEventListener("click", () => {
@@ -219,6 +219,29 @@ function setupRail() {
     });
   });
   $("me").addEventListener("click", lock);
+  $("alerts").addEventListener("click", openAlerts);
+}
+
+// ---------- Avisos de mantenimiento ----------
+
+const BELL = '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>';
+
+function renderAlerts() {
+  const list = state.home?.avisos || [];
+  const b = $("alerts");
+  b.hidden = !list.length || !state.user;
+  b.innerHTML = `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${BELL}</svg><span>Avisos</span><em>${list.length}</em>`;
+}
+
+function openAlerts() {
+  const list = state.home?.avisos || [];
+  $("modal").querySelector(".modal-card").setAttribute("style", "--event:#D9483B");
+  $("modal-cal").textContent = "AVISOS";
+  $("modal-title").textContent = list.length === 1 ? "Una cosa que revisar" : `${list.length} cosas que revisar`;
+  $("modal-when").textContent = "";
+  $("modal-extra").textContent = list.map((a) => `• ${a.texto}`).join("\n\n");
+  $("modal").hidden = false;
+  $("modal-close").focus();
 }
 
 function resetIdle() {
@@ -907,6 +930,7 @@ function renderLists() {
 
 function render() {
   tick();
+  renderAlerts();
   renderLockWeather();
   if (!state.user) return;
   switch (state.view) {
