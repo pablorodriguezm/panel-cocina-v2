@@ -680,8 +680,7 @@ function realAir(r) {
   const day = (label, d) => d && d.kwh >= 0.3 ? `${label} <b>${d.kwh.toLocaleString(ES, { maximumFractionDigits: 1 })} kWh${money(d.eur)}</b>` : `${label} sin usar`;
   const parts = [day("hoy", r.hoy), day("ayer", r.ayer)];
   if (r.semana) parts.push(`7 días <b>${r.semana.kwh.toLocaleString(ES, { maximumFractionDigits: 0 })} kWh${money(r.semana.eur)}</b>`);
-  const perDegree = r.kwh_por_grado_dia ? ` Pide ≈ ${r.kwh_por_grado_dia.toLocaleString(ES)} kWh por grado de frío y día.` : "";
-  return `<p class="note hc-real">⚡ Gasto real del aire: ${parts.join(" · ")}.${perDegree}</p>`;
+  return `<p class="note hc-real">⚡ Gasto real del aire: ${parts.join(" · ")}.</p>`;
 }
 
 function renderHeatCost() {
@@ -706,7 +705,7 @@ function renderHeatCost() {
       <div style="--tint:${AIR}"><small>❄️ Aire · COP ${n.cop.toLocaleString(ES)}</small><b>${euros(n.aire)} €</b></div>
       <div style="--tint:${GAS}"><small>🔥 Caldera de gas</small><b>${euros(n.gas)} €</b></div>
     </div>
-    <p class="note hc-unit">Por kWh de calor, con impuestos. Barras: el aire hora a hora; la línea, el gas.</p>
+    <p class="note hc-unit">€ por kWh de calor, con impuestos. Barras, el aire; línea, el gas.</p>
     <div class="hc-chart"><div class="bars">${bars}</div><div class="hc-gas" style="bottom:${(h.gas.eur_kwh_calor / max) * 100}%"></div></div>
     <div class="axis">${ticks}</div>
     <p class="note hc-sum">${gasHours} Ahora la luz está a <b>${euros(n.pvpc)} €/kWh</b>; con ${Math.round(n.temp)}° fuera,
