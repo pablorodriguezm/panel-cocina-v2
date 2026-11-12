@@ -286,6 +286,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .hc-chart .bars { height: 100%; min-height: 0; }
 .hc-gas { position: absolute; left: 0; right: 0; border-top: 2px dashed #F08A3C; }
 .hc-sum { font-size: 13px; margin: 6px 0 0; }
+.hc-real { font-size: 13px; margin: 6px 0 0; padding-top: 6px; border-top: 1px solid var(--highlight); }
 
 /* --- Casa: calefacción, aire, temperaturas y música --- */
 .rb { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; font-weight: 600;

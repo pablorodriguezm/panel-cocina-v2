@@ -673,6 +673,17 @@ function hourRanges(times, now) {
   return out.map((r) => `${dayKey(r.start) === dayKey(now) ? "" : relDay(r.start, now) + " "}${r.start.getHours()}–${r.end.getHours() + 1} h`).join(" · ");
 }
 
+// Lo que de verdad ha gastado el aire, según el circuito de climatización del Shelly
+function realAir(r) {
+  if (!r) return "";
+  const money = (v) => v == null ? "" : ` · ${v.toLocaleString(ES, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  const day = (label, d) => d && d.kwh >= 0.3 ? `${label} <b>${d.kwh.toLocaleString(ES, { maximumFractionDigits: 1 })} kWh${money(d.eur)}</b>` : `${label} sin usar`;
+  const parts = [day("hoy", r.hoy), day("ayer", r.ayer)];
+  if (r.semana) parts.push(`7 días <b>${r.semana.kwh.toLocaleString(ES, { maximumFractionDigits: 0 })} kWh${money(r.semana.eur)}</b>`);
+  const perDegree = r.kwh_por_grado_dia ? ` Pide ≈ ${r.kwh_por_grado_dia.toLocaleString(ES)} kWh por grado de frío y día.` : "";
+  return `<p class="note hc-real">⚡ Gasto real del aire: ${parts.join(" · ")}.${perDegree}</p>`;
+}
+
 function renderHeatCost() {
   const h = state.home?.calefaccion?.data;
   const el = $("heating-cost");
@@ -699,7 +710,7 @@ function renderHeatCost() {
     <div class="hc-chart"><div class="bars">${bars}</div><div class="hc-gas" style="bottom:${(h.gas.eur_kwh_calor / max) * 100}%"></div></div>
     <div class="axis">${ticks}</div>
     <p class="note hc-sum">${gasHours} Ahora la luz está a <b>${euros(n.pvpc)} €/kWh</b>; con ${Math.round(n.temp)}° fuera,
-      el aire sale más barato mientras esté por debajo de <b>${euros(h.empate_pvpc)} €/kWh</b> (precio PVPC, como en «Luz hoy»).</p>`;
+      el aire sale más barato mientras esté por debajo de <b>${euros(h.empate_pvpc)} €/kWh</b> (precio PVPC, como en «Luz hoy»).</p>${realAir(h.real)}`;
 }
 
 function renderCar() {

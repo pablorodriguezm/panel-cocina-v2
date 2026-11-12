@@ -182,3 +182,9 @@ async def get() -> dict:
                                  color="#004D98", description="Champions League")]
     data = calendarios.holidays(start, end) + f1 + futbol
     return {"data": sorted(data, key=lambda e: e["start"]), "fuentes": {"demo": {"ok": True, "error": None}}}
+
+
+def air_real() -> dict:
+    return {"aparato": "Climatización", "hoy": {"kwh": 3.4, "eur": 0.71, "t_media": 9.8, "grados_dia": 8.2, "horas": 3},
+            "ayer": {"kwh": 9.2, "eur": 1.85, "t_media": 8.1, "grados_dia": 9.9, "horas": 7},
+            "semana": {"kwh": 41.3, "eur": 8.3, "dias": 5}, "kwh_por_grado_dia": 1.12, "dias_calefaccion": 12}

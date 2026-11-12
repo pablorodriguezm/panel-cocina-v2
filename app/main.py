@@ -30,7 +30,7 @@ from fastapi.staticfiles import StaticFiles
 
 import asyncio
 
-from . import avisos, calefaccion, calendarios, config, demo, energy, house, menu, reminders, shelly, sources
+from . import aire, avisos, calefaccion, calendarios, config, demo, energy, house, menu, reminders, shelly, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -64,6 +64,14 @@ async def lifespan(_: FastAPI):
         return await (demo.consumption(prices) if DEMO else sources.consumption(ha, prices))
     state["consumption"] = Cached("consumo", 30, _consumption)
     state["house"] = Cached("casa", 20, (lambda: demo.house()) if DEMO else (lambda: sources.house(ha)))
+    # Consumo real del aire (circuito de climatización): cada 10 minutos
+    state["air_store"] = aire.Store()
+    async def _air():
+        if DEMO:
+            return demo.air_real()
+        return await sources.air_real(ha, client, state["air_store"], (await state["prices"].get())["data"] or [],
+                                      (await state["weather"].get())["data"])
+    state["air"] = Cached("aire", 10 * 60, _air)
     # Precio de cada hora a la «Tarifa en vivo» de Shelly Cloud (solo con SHELLY_TARIFA_URL y fuera de la demo)
     async def _prices():
         return (await state["prices"].get())["data"] or []
@@ -82,6 +90,8 @@ async def _heating() -> dict:
     """¿Gas o aire? Con el precio de la luz y la previsión del tiempo que ya tiene el panel."""
     prices, weather = await state["prices"].get(), await state["weather"].get()
     data = calefaccion.forecast(prices["data"] or [], weather["data"], datetime.now(config.zone()))
+    if data:
+        data["real"] = (await state["air"].get())["data"]
     return {"data": data, "stale": prices["stale"] or weather["stale"], "error": None}
 
 

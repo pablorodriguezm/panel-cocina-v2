@@ -58,4 +58,31 @@ calefaccion:
 sale en el BOE y en la primera factura del trimestre («Energía facturada … €/kWh»). Si pasan más de 95 días sin
 actualizarlo, `/api/salud` lo avisa en `precio_gas`.
 
-Más adelante se puede calibrar el factor real con lo que mide el Shelly del circuito de climatización.
+## Gasto real del aire
+
+El Shelly Pro 3EM mide el circuito de climatización, que solo lleva el Daikin (el aparato «Climatización» de
+`consumo.aparatos`; otro nombre, con `calefaccion.aparato_aire`). El panel apunta cada día, en el volumen de datos
+(`aire.json`), lo que ha gastado de verdad:
+
+| Dato | Cómo sale |
+|---|---|
+| kWh del día | Historial de potencia del circuito en Home Assistant, integrado por horas |
+| € del día | kWh de cada hora × PVPC de esa hora, con impuestos |
+| Temperatura media y grados-día | Open-Meteo; grados-día = lo que la media de cada hora queda por debajo de 18 °C |
+
+La tarjeta lo enseña debajo de la previsión: hoy, ayer y los últimos 7 días. La primera vez rellena la última semana
+con el historial de Home Assistant.
+
+### Para qué sirve: afinar el COP
+
+El Shelly mide la luz que entra al aire, no el calor que da: **el COP no se puede medir directamente**. Lo que sí
+sale, a partir de 7 días con calefacción, son los **kWh de luz por grado-día** (cuánta luz pide la casa por cada
+grado de frío). Para convertirlo en un rendimiento real hace falta la misma cuenta con gas:
+
+1. Un periodo de solo caldera (sin aire): kWh de gas de la factura ÷ grados-día de ese periodo × 0,90 = calor por
+   grado-día que necesita la casa.
+2. COP real ≈ ese calor por grado-día ÷ los kWh de luz por grado-día del aire.
+3. `factor_real` = COP real ÷ COP de catálogo a la temperatura media de esos días.
+
+Es una aproximación (el sol, el viento y la temperatura de consigna cambian de un periodo a otro), y solo vale con
+periodos claros de «solo aire» y «solo caldera». El paso 1 aún no está automatizado: se hace con una factura.

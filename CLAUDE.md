@@ -38,7 +38,9 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 - **Calefacción: ¿gas o aire?** (app/calefaccion.py, `docs/CALEFACCION.md`): en Energía, qué sale más barato por
   kWh de calor, ahora y hora a hora: gas TUR.1 (`app/gas.yaml`, hay que añadir cada trimestre) ÷ rendimiento de la
   caldera Bosch Condens 2300i W, frente a PVPC con impuestos ÷ COP del Daikin ADEAS100A de conductos con la
-  temperatura de esa hora. Solo coste de uso, sin términos fijos. Solo aconseja, no enciende nada.
+  temperatura de esa hora. Solo coste de uso, sin términos fijos. Solo aconseja, no enciende nada. Debajo, el gasto
+  real del aire (app/aire.py): kWh y € diarios del circuito «Climatización» del Shelly, con los grados-día, para
+  afinar el COP con el tiempo (el Shelly mide luz, no calor: el COP no se mide directamente).
 - **Tarifa en vivo de Shelly** (app/shelly.py, `docs/SHELLY.md`): cada hora el panel manda el PVPC de esa hora
   (con impuestos) a Shelly Cloud, para que la app de Shelly calcule los costes con el precio real. Solo con
   `SHELLY_TARIFA_URL`.
