@@ -42,6 +42,8 @@ def client(tmp_path, monkeypatch):
     cfg.write_text("ubicacion: {latitud: 0, longitud: 0}\nrecordatorios: {listas: [Compra]}\n", encoding="utf-8")
     monkeypatch.setattr(config, "CONFIG_PATH", cfg)
     monkeypatch.setattr(reminders, "DATA_PATH", tmp_path / "data" / "r.json")
+    from app import copias
+    monkeypatch.setattr(copias, "DATA_PATH", tmp_path / "data" / "copias.json")
     monkeypatch.setenv("PANEL_TOKEN", "abc")
     config.load.cache_clear()
     from app import main
@@ -63,3 +65,9 @@ def test_endpoint_stores_and_warns_unknown_list(client):
     from app import main
     [compra] = main.state["reminders"].view(["Compra"])
     assert compra["items"][0]["titulo"] == "Leche"
+
+
+def test_backup_ping_needs_token(client):
+    assert client.post("/api/copias/ok").status_code == 401
+    assert client.post("/api/copias/ok", headers={"X-Panel-Token": "abc"}).json() == {"ok": True}
+    assert client.get("/api/salud").json()["copias"]["vigilada"] is True

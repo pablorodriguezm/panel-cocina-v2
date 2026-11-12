@@ -44,6 +44,10 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 - **Tarifa en vivo de Shelly** (app/shelly.py, `docs/SHELLY.md`): cada hora el panel manda el PVPC de esa hora
   (con impuestos) a Shelly Cloud, para que la app de Shelly calcule los costes con el precio real. Solo con
   `SHELLY_TARIFA_URL`.
+- **Copias de seguridad** (`deploy/copias-compose.yml`, `docs/COPIAS.md`): un stack aparte copia cada noche al
+  Synology (SMB, carpeta `copias-zimaos`) los volcados de todas las bases PostgreSQL, `/DATA/AppData` y los volúmenes
+  de Docker, sin las fotos de Immich. Avisa al panel al terminar (`POST /api/copias/ok`); si falta día y medio, sale
+  en Avisos.
 - **Calendarios extra** (app/calendarios.py, `docs/CALENDARIOS.md`): festivos de Madrid capital
   (`app/festivos.yaml`, hay que añadir cada año), Fórmula 1 (todas las sesiones, API Jolpica) y partidos del
   Real Madrid y del Barça (todas las competiciones, un .ics por equipo). Solo en el panel, no en el calendario de
@@ -64,7 +68,8 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   No toques a mano la línea `image:` de ese fichero.
 - Despliegue real: ZimaOS en 192.168.1.34 (Portainer :9000, panel :8090), Home Assistant en 192.168.1.202.
   La configuración vive en el servidor en /DATA/AppData/panel-cocina/config/config.yaml.
-- Secretos solo en variables de Portainer o `.env` (ignorado): `HA_TOKEN`, `PANEL_TOKEN`, `SHELLY_TARIFA_URL`
+- Secretos solo en variables de Portainer o `.env` (ignorado): `HA_TOKEN`, `PANEL_TOKEN`, `SHELLY_TARIFA_URL` y,
+  en el stack de copias, `SMB_USER` y `SMB_PASSWORD`
   (copia en Bitwarden → ZIMA_OS). `config/config.yaml`
   tampoco se sube.
 - Antes de un PR: `python -m pytest -q`. Para ver la interfaz sin Home Assistant:

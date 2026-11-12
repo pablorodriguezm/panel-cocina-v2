@@ -41,3 +41,17 @@ def test_each_problem_gives_one_alert():
 
 def test_shelly_error_is_ignored_when_not_configured():
     assert build(shelly={"activo": False, "error": "algo"}) == []
+
+
+def test_backup_watch(tmp_path, monkeypatch):
+    from app import copias
+    s = copias.Store(tmp_path / "copias.json")
+    assert s.status()["vigilada"] is False and s.status()["ok"]  # sin primer aviso no se vigila
+    s.ok()
+    assert copias.Store(tmp_path / "copias.json").status()["ok"]
+    assert build(backups=s.status()) == []
+    now = copias.time.time()
+    monkeypatch.setattr(copias.time, "time", lambda: now + 3 * 86400)
+    st = s.status()
+    assert not st["ok"] and "hace 3 día" in st["error"]
+    assert [a["id"] for a in build(backups=st)] == ["copias"]

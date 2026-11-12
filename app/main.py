@@ -5,6 +5,7 @@ GET  /api/hogar           → lo común: tiempo, luz (y si calentar con gas o ai
 POST /api/recordatorios   → el Atajo del iPhone envía las listas de Recordatorios (cabecera X-Panel-Token)
 POST /api/recordatorios/recoger → el Atajo recoge lo pasado a la compra desde el panel (cabecera X-Panel-Token)
 GET  /api/menu?semana=0   → menú de la semana (0 esta, 1 la siguiente) y sus ingredientes
+POST /api/copias/ok       → el stack «copias» avisa de que la copia de seguridad ha terminado (X-Panel-Token)
 POST /api/menu/cambiar    → cambia la comida o la cena de un día por otro plato del mismo tipo
 POST /api/menu/compra     → pasa un ingrediente del menú a la compra (o lo quita si el Atajo aún no lo ha recogido)
 GET  /api/casa            → calefacción, aire, temperaturas y música
@@ -30,7 +31,7 @@ from fastapi.staticfiles import StaticFiles
 
 import asyncio
 
-from . import aire, avisos, calefaccion, calendarios, config, demo, energy, house, menu, reminders, shelly, sources
+from . import aire, avisos, calefaccion, calendarios, config, copias, demo, energy, house, menu, reminders, shelly, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -55,6 +56,7 @@ async def lifespan(_: FastAPI):
     state["extra"] = demo if DEMO else calendarios.Extra(client)
     state["reminders"] = reminders.Store()
     state["menu"] = menu.Store()
+    state["backups"] = copias.Store()
     if DEMO and not state["reminders"].lists:
         state["reminders"].lists = demo.reminders()
     state["car"] = Cached("coche", 2 * 60, src.car if src else lambda: sources.car(ha))
@@ -146,7 +148,7 @@ async def _alerts() -> list[dict]:
                         sources={k: await state[k].get() for k in avisos.NOMBRES},
                         extra=(await state["extra"].get())["fuentes"],
                         lists=state["reminders"].view(config.reminder_lists()),
-                        shelly=state["shelly"].status)
+                        shelly=state["shelly"].status, backups=state["backups"].status())
 
 
 @app.get("/api/usuario/{user_id}")
@@ -203,6 +205,7 @@ async def health():
     gas_warning = calefaccion.stale_gas_price(datetime.now(config.zone()).date())
     out["precio_gas"] = {"ok": gas_warning is None, "error": gas_warning}
     out["shelly_tarifa"] = state["shelly"].status
+    out["copias"] = state["backups"].status()
     out["avisos"] = await _alerts()
     return out
 
@@ -224,6 +227,14 @@ async def push_reminders(request: Request, x_panel_token: str | None = Header(de
     unknown = [n for n in updated if n not in config.reminder_lists()]
     return {"ok": True, "actualizadas": updated,
             "aviso": f"Listas que el panel no enseña (añádelas en config.yaml): {', '.join(unknown)}" if unknown else None}
+
+
+@app.post("/api/copias/ok")
+async def backup_done(x_panel_token: str | None = Header(default=None)):
+    """El stack «copias» avisa de que la copia de seguridad de esta noche ha terminado bien."""
+    _check_token(x_panel_token)
+    state["backups"].ok()
+    return {"ok": True}
 
 
 @app.post("/api/recordatorios/recoger")
