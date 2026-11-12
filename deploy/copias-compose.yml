@@ -1,0 +1,78 @@
+# Copia de seguridad de todo ZimaOS al Synology, cada noche (docs/COPIAS.md).
+# Stack aparte en Portainer («copias»), con estas variables:
+#   SMB_USER, SMB_PASSWORD  → usuario del Synology con permiso de escritura en la carpeta compartida
+#   PANEL_TOKEN             → el mismo del panel, para avisarle de que la copia ha terminado
+# y, si no valen los valores por defecto: SMB_HOST, SMB_SHARE, DOCKER_VOLUMES, RETENCION_DIAS, PANEL_HOST.
+name: copias
+services:
+  # Vuelca todas las bases de datos PostgreSQL que haya en marcha (TeslaMate, Outline, Immich…) justo antes de
+  # empaquetar: copiar la carpeta de una base de datos encendida puede dar una copia que no arranca.
+  # Las encuentra solas: cualquier contenedor que tenga pg_dumpall y la variable POSTGRES_USER.
+  volcado:
+    image: docker:27-cli
+    container_name: copias-volcado
+    restart: unless-stopped
+    # Al arrancar escribe el guion de volcado y se queda esperando; la copia lo llama antes de empaquetar.
+    # (El guion va aquí y no en la etiqueta porque la herramienta de copias sustituye los «$» de las etiquetas.)
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        cat > /volcar.sh <<'FIN'
+        set -o pipefail
+        fallo=0
+        find /volcados -type f -delete
+        for c in $$(docker ps --format '{{.Names}}'); do
+          if docker exec "$$c" sh -c 'command -v pg_dumpall >/dev/null && test -n "$$POSTGRES_USER"' 2>/dev/null; then
+            echo "Volcando $$c"
+            if docker exec "$$c" sh -c 'pg_dumpall -U "$$POSTGRES_USER"' | gzip > "/volcados/$$c.sql.gz.tmp"; then
+              mv "/volcados/$$c.sql.gz.tmp" "/volcados/$$c.sql.gz"
+            else
+              echo "FALLO al volcar $$c"
+              fallo=1
+            fi
+          fi
+        done
+        find /volcados -name '*.tmp' -delete
+        exit $$fallo
+        FIN
+        exec sleep infinity
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - volcados:/volcados
+    labels:
+      - docker-volume-backup.archive-pre=/bin/sh /volcar.sh
+
+  copia:
+    image: offen/docker-volume-backup:v2.50.1
+    container_name: copias
+    restart: unless-stopped
+    environment:
+      # A las 02:30 UTC: las 03:30 en invierno y las 04:30 en verano
+      BACKUP_CRON_EXPRESSION: "30 2 * * *"
+      BACKUP_FILENAME: "zimaos-%Y-%m-%dT%H-%M.tar.gz"
+      BACKUP_PRUNING_PREFIX: "zimaos-"
+      BACKUP_RETENTION_DAYS: "${RETENCION_DIAS:-14}"
+      # Fuera de la copia: las carpetas de datos de PostgreSQL (van en los volcados), las fotos y miniaturas de
+      # Immich, y cachés que se regeneran solas
+      BACKUP_EXCLUDE_REGEXP: "(/(pg_?data|postgres(ql)?|[^/]*_pg_?data|[^/]*_postgres[^/]*|copias_volcados)/|/AppData/immich/([^/]+/)?(library|upload|thumbs|encoded-video|profile)/|/(cache|Cache|\\.cache|logs)/)"
+      EXEC_FORWARD_OUTPUT: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /DATA/AppData:/backup/AppData:ro
+      - ${DOCKER_VOLUMES:-/var/lib/docker/volumes}:/backup/volumenes:ro
+      - volcados:/backup/bases-de-datos:ro
+      - synology:/archive
+    labels:
+      # Al acabar de copiar, avisa al panel de cocina: si deja de avisar día y medio, el panel lo enseña en «Avisos»
+      - >-
+        docker-volume-backup.copy-post=/bin/sh -c 'wget -q -T 10 -O /dev/null --post-data=""
+        --header="X-Panel-Token: ${PANEL_TOKEN:-}" http://${PANEL_HOST:-192.168.1.34:8090}/api/copias/ok || true'
+
+volumes:
+  volcados:
+  synology:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//${SMB_HOST:-192.168.1.44}/${SMB_SHARE:-copias-zimaos}"
+      o: "addr=${SMB_HOST:-192.168.1.44},username=${SMB_USER},password=${SMB_PASSWORD},vers=3.0,file_mode=0600,dir_mode=0700"

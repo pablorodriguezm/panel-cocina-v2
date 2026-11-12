@@ -86,18 +86,39 @@ def _pick(rng: random.Random, pool: list[dict], used: set[str]) -> dict | None:
     return choice
 
 
-def plan(week: date) -> list[dict]:
-    """Comida y cena de cada día de la semana que empieza el lunes `week`."""
+ESTACIONES = ["invierno"] * 2 + ["primavera"] * 3 + ["verano"] * 3 + ["otoño"] * 3 + ["invierno"]
+
+
+def season(week: date) -> str:
+    """Estación de la semana (la de su jueves): diciembre-febrero invierno, marzo-mayo primavera…"""
+    return ESTACIONES[(monday(week) + timedelta(days=3)).month - 1]
+
+
+def pool(meal: str, group: str, when: str) -> list[dict]:
+    """Recetas de ese momento del día y grupo que tocan en esa estación (sin «temporada», todo el año)."""
+    return [r for r in recetario()["recetas"]
+            if r.get(meal) and r.get("grupo") == group and (not r.get("temporada") or when in r["temporada"])]
+
+
+def plan(week: date, changes: dict[str, str] | None = None) -> list[dict]:
+    """Comida y cena de cada día de la semana que empieza el lunes `week`. `changes` son los platos cambiados a
+    mano: {"AAAA-MM-DD|comida": id de receta}."""
     week = monday(week)
     year, num, _ = week.isocalendar()
     rng = random.Random(f"{year}-{num}")
-    recetas = recetario()["recetas"]
+    when = season(week)
     used: set[str] = set()
     days = []
     for i in range(7):
-        lunch = _pick(rng, [r for r in recetas if r.get("comida") and r.get("grupo") == COMIDAS[i]], used)
-        dinner = _pick(rng, [r for r in recetas if r.get("cena") and r.get("grupo") == CENAS[i]], used)
+        lunch = _pick(rng, pool("comida", COMIDAS[i], when), used)
+        dinner = _pick(rng, pool("cena", CENAS[i], when), used)
         days.append({"fecha": (week + timedelta(days=i)).isoformat(), "comida": _dish(lunch), "cena": _dish(dinner)})
+    by_id = {r["id"]: r for r in recetario()["recetas"]}
+    for key, recipe_id in (changes or {}).items():
+        fecha, meal = key.split("|")
+        day = next((d for d in days if d["fecha"] == fecha), None)
+        if day and recipe_id in by_id and meal in ("comida", "cena"):
+            day[meal] = {**_dish(by_id[recipe_id]), "cambiado": True}
     return days
 
 
@@ -178,20 +199,55 @@ class Store:
     def __init__(self, path: Path | None = None):
         self.path = path or DATA_PATH
         self.pending: list[dict] = []
+        self.changes: dict[str, dict[str, str]] = {}  # platos cambiados a mano, por semana
         self.last_collect: dict | None = None
         try:
-            self.pending = json.loads(self.path.read_text(encoding="utf-8")).get("pendientes", [])
+            saved = json.loads(self.path.read_text(encoding="utf-8"))
+            self.pending = saved.get("pendientes", [])
+            self.changes = saved.get("cambios", {})
         except (OSError, ValueError, AttributeError):
-            self.pending = []
+            self.pending, self.changes = [], {}
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(dir=self.path.parent, prefix=".menu-")
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump({"pendientes": self.pending}, f, ensure_ascii=False)
+            json.dump({"pendientes": self.pending, "cambios": self.changes}, f, ensure_ascii=False)
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, self.path)
+
+    def plan(self, week: date) -> list[dict]:
+        """El menú de la semana con los platos cambiados a mano."""
+        return plan(week, self.changes.get(monday(week).isoformat()))
+
+    def swap(self, fecha: date, meal: str) -> bool:
+        """Cambia ese plato por el siguiente de su grupo y estación que no esté ya en la semana. Dando vueltas se
+        vuelve al original. Devuelve False si no hay otro."""
+        week = monday(fecha)
+        key, wk = f"{fecha.isoformat()}|{meal}", week.isoformat()
+        days = self.plan(week)
+        current = next(d for d in days if d["fecha"] == fecha.isoformat())[meal]
+        original = next(d for d in plan(week) if d["fecha"] == fecha.isoformat())[meal]
+        if not current:
+            return False
+        taken = {d[m]["id"] for d in days for m in ("comida", "cena") if d[m]} - {current["id"]}
+        options = [r["id"] for r in pool(meal, current["grupo"], season(week)) if r["id"] not in taken]
+        others = [o for o in options if o != current["id"]]
+        if not others:
+            return False
+        i = options.index(current["id"]) if current["id"] in options else -1
+        chosen = options[(i + 1) % len(options)]
+        mine = self.changes.setdefault(wk, {})
+        if original and chosen == original["id"]:
+            mine.pop(key, None)
+        else:
+            mine[key] = chosen
+        # Las semanas pasadas ya no hacen falta
+        limit = (monday(date.today()) - timedelta(days=7)).isoformat()
+        self.changes = {w: c for w, c in self.changes.items() if w >= limit and c}
+        self._save()
+        return True
 
     def toggle(self, week: str, item: dict) -> bool:
         """Pasa el ingrediente a la compra, o lo quita si aún no lo ha recogido el Atajo. Devuelve si queda pasado."""
@@ -261,12 +317,12 @@ class Store:
 
 def week_view(week: date, store: Store, shopping_titles: list[str]) -> dict[str, Any]:
     week = monday(week)
-    days = plan(week)
+    days = store.plan(week)
     moved = store.moved(week.isoformat())
     sections = shopping(days)
     for s in sections:
         for item in s["items"]:
             item["pasado"] = item["clave"] in moved
             item["en_lista"] = in_list(item["nombre"], shopping_titles)
-    return {"semana": week.isoformat(), "personas": personas(), "dias": days, "compra": sections,
+    return {"semana": week.isoformat(), "estacion": season(week), "personas": personas(), "dias": days, "compra": sections,
             "basicos": recetario()["basicos"], "lista": shopping_list_name()}

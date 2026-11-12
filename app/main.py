@@ -5,6 +5,8 @@ GET  /api/hogar           → lo común: tiempo, luz (y si calentar con gas o ai
 POST /api/recordatorios   → el Atajo del iPhone envía las listas de Recordatorios (cabecera X-Panel-Token)
 POST /api/recordatorios/recoger → el Atajo recoge lo pasado a la compra desde el panel (cabecera X-Panel-Token)
 GET  /api/menu?semana=0   → menú de la semana (0 esta, 1 la siguiente) y sus ingredientes
+POST /api/copias/ok       → el stack «copias» avisa de que la copia de seguridad ha terminado (X-Panel-Token)
+POST /api/menu/cambiar    → cambia la comida o la cena de un día por otro plato del mismo tipo
 POST /api/menu/compra     → pasa un ingrediente del menú a la compra (o lo quita si el Atajo aún no lo ha recogido)
 GET  /api/casa            → calefacción, aire, temperaturas y música
 GET  /api/consumo         → potencia de ahora, por aparato y consumo de hoy por horas
@@ -29,7 +31,7 @@ from fastapi.staticfiles import StaticFiles
 
 import asyncio
 
-from . import calefaccion, calendarios, config, demo, energy, house, menu, reminders, shelly, sources
+from . import aire, avisos, calefaccion, calendarios, config, copias, demo, energy, house, menu, reminders, shelly, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -54,6 +56,7 @@ async def lifespan(_: FastAPI):
     state["extra"] = demo if DEMO else calendarios.Extra(client)
     state["reminders"] = reminders.Store()
     state["menu"] = menu.Store()
+    state["backups"] = copias.Store()
     if DEMO and not state["reminders"].lists:
         state["reminders"].lists = demo.reminders()
     state["car"] = Cached("coche", 2 * 60, src.car if src else lambda: sources.car(ha))
@@ -63,6 +66,14 @@ async def lifespan(_: FastAPI):
         return await (demo.consumption(prices) if DEMO else sources.consumption(ha, prices))
     state["consumption"] = Cached("consumo", 30, _consumption)
     state["house"] = Cached("casa", 20, (lambda: demo.house()) if DEMO else (lambda: sources.house(ha)))
+    # Consumo real del aire (circuito de climatización): cada 10 minutos
+    state["air_store"] = aire.Store()
+    async def _air():
+        if DEMO:
+            return demo.air_real()
+        return await sources.air_real(ha, client, state["air_store"], (await state["prices"].get())["data"] or [],
+                                      (await state["weather"].get())["data"])
+    state["air"] = Cached("aire", 10 * 60, _air)
     # Precio de cada hora a la «Tarifa en vivo» de Shelly Cloud (solo con SHELLY_TARIFA_URL y fuera de la demo)
     async def _prices():
         return (await state["prices"].get())["data"] or []
@@ -81,21 +92,27 @@ async def _heating() -> dict:
     """¿Gas o aire? Con el precio de la luz y la previsión del tiempo que ya tiene el panel."""
     prices, weather = await state["prices"].get(), await state["weather"].get()
     data = calefaccion.forecast(prices["data"] or [], weather["data"], datetime.now(config.zone()))
+    if data:
+        data["real"] = (await state["air"].get())["data"]
     return {"data": data, "stale": prices["stale"] or weather["stale"], "error": None}
 
 
-def _energy_view(cached: dict) -> dict:
+def _energy_view(cached: dict, car: dict | None = None) -> dict:
     prices = cached["data"] or []
     now = datetime.now(config.zone()).replace(tzinfo=None)
     recs = config.load()["energia"]["recomendaciones"]
+    c = config.load().get("coche") or {}
+    need = energy.car_need(car, float(c.get("bateria_kwh", 75)), float(c.get("eficiencia_carga", 0.9)))
     return {**cached, "data": energy.summary(prices, now, recs, holidays=calendarios.national_holidays(),
-                                             tax_factor=calefaccion.electricity_with_taxes(1.0)) if prices else None}
+                                             tax_factor=calefaccion.electricity_with_taxes(1.0), car=need) if prices else None}
 
 
 @app.get("/api/usuarios")
 async def users():
     pantalla = config.load().get("pantalla") or {}
-    return {"usuarios": config.public_users(), "volver_al_bloqueo_s": int(pantalla.get("volver_al_bloqueo_s", 120))}
+    mode = str(pantalla.get("modo_oscuro", "auto")).lower()
+    return {"usuarios": config.public_users(), "volver_al_bloqueo_s": int(pantalla.get("volver_al_bloqueo_s", 120)),
+            "modo_oscuro": mode if mode in ("auto", "siempre", "nunca") else "auto"}
 
 
 def _lists() -> list[dict]:
@@ -116,13 +133,22 @@ async def home():
     return {
         "ahora": datetime.now(config.zone()).isoformat(timespec="seconds"),
         "tiempo": await state["weather"].get(),
-        "luz": _energy_view(await state["prices"].get()),
+        "luz": _energy_view(await state["prices"].get(), (await state["car"].get())["data"]),
         "calefaccion": await _heating(),
         "calendario": await state["calendar"].get(),
         "calendarios_extra": {"data": (await state["extra"].get())["data"], "stale": False, "error": None},
         "recordatorios": {"data": _lists(), "stale": False, "error": None},
         "coche": await state["car"].get(),
+        "avisos": await _alerts(),
     }
+
+
+async def _alerts() -> list[dict]:
+    return avisos.build(datetime.now(config.zone()),
+                        sources={k: await state[k].get() for k in avisos.NOMBRES},
+                        extra=(await state["extra"].get())["fuentes"],
+                        lists=state["reminders"].view(config.reminder_lists()),
+                        shelly=state["shelly"].status, backups=state["backups"].status())
 
 
 @app.get("/api/usuario/{user_id}")
@@ -179,6 +205,8 @@ async def health():
     gas_warning = calefaccion.stale_gas_price(datetime.now(config.zone()).date())
     out["precio_gas"] = {"ok": gas_warning is None, "error": gas_warning}
     out["shelly_tarifa"] = state["shelly"].status
+    out["copias"] = state["backups"].status()
+    out["avisos"] = await _alerts()
     return out
 
 
@@ -199,6 +227,14 @@ async def push_reminders(request: Request, x_panel_token: str | None = Header(de
     unknown = [n for n in updated if n not in config.reminder_lists()]
     return {"ok": True, "actualizadas": updated,
             "aviso": f"Listas que el panel no enseña (añádelas en config.yaml): {', '.join(unknown)}" if unknown else None}
+
+
+@app.post("/api/copias/ok")
+async def backup_done(x_panel_token: str | None = Header(default=None)):
+    """El stack «copias» avisa de que la copia de seguridad de esta noche ha terminado bien."""
+    _check_token(x_panel_token)
+    state["backups"].ok()
+    return {"ok": True}
 
 
 @app.post("/api/recordatorios/recoger")
@@ -235,11 +271,27 @@ async def menu_to_shopping(request: Request):
         week, clave = _week(body.get("semana", 0)), str(body["clave"])
     except (ValueError, KeyError, AttributeError):
         raise HTTPException(400, "Se esperaba {semana, clave}")
-    item = next((i for s in menu.shopping(menu.plan(week)) for i in s["items"] if i["clave"] == clave), None)
+    item = next((i for s in menu.shopping(state["menu"].plan(week)) for i in s["items"] if i["clave"] == clave), None)
     if item is None:
         raise HTTPException(404, "Ese ingrediente no está en el menú de esa semana")
     state["menu"].toggle(week.isoformat(), item)
     return _menu_view(week)
+
+
+@app.post("/api/menu/cambiar")
+async def menu_swap(request: Request):
+    """Cambia la comida o la cena de un día (de esta semana o la siguiente) por otro plato del mismo tipo."""
+    try:
+        body = await request.json()
+        fecha, meal = date.fromisoformat(str(body["fecha"])), str(body["momento"])
+    except (ValueError, KeyError, TypeError, AttributeError):
+        raise HTTPException(400, "Se esperaba {fecha, momento}")
+    today = datetime.now(config.zone()).date()
+    if meal not in ("comida", "cena") or not 0 <= (menu.monday(fecha) - menu.monday(today)).days <= 7:
+        raise HTTPException(400, "Solo la comida o la cena de esta semana o la siguiente")
+    if not state["menu"].swap(fecha, meal):
+        raise HTTPException(409, "No hay otro plato de ese tipo esta semana")
+    return _menu_view(menu.monday(fecha))
 
 
 @app.get("/")

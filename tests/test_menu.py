@@ -30,11 +30,12 @@ def test_recipes_are_well_formed():
             if menu.norm(ing["nombre"]) in basics:
                 continue
             assert ing["unidad"] in UNIDADES and ing["seccion"] in menu.SECCIONES and ing["cantidad"] > 0, (r["id"], ing)
-    # Cada grupo del plan tiene recetas suficientes para no repetir en la semana
-    recipes = menu.recetario()["recetas"]
-    for meal, template in (("comida", menu.COMIDAS), ("cena", menu.CENAS)):
-        for group, n in Counter(template).items():
-            assert sum(1 for r in recipes if r.get(meal) and r["grupo"] == group) >= n, (meal, group)
+        assert set(r.get("temporada") or []) <= {"primavera", "verano", "otoño", "invierno"}, r["id"]
+    # En cada estación, cada grupo tiene recetas para no repetir en la semana y una más para poder cambiar
+    for when in ("primavera", "verano", "otoño", "invierno"):
+        for meal, template in (("comida", menu.COMIDAS), ("cena", menu.CENAS)):
+            for group, n in Counter(template).items():
+                assert len(menu.pool(meal, group, when)) >= n + 1, (when, meal, group)
 
 
 def test_week_plan_is_balanced_stable_and_without_repeats():
@@ -150,3 +151,48 @@ def test_bad_requests(client):
     assert client.get("/api/menu?semana=x").status_code == 422
     assert client.post("/api/menu/compra", json={"semana": 0}).status_code == 400
     assert client.post("/api/menu/compra", json={"semana": 0, "clave": "nada|g"}).status_code == 404
+
+
+def test_seasons_follow_the_calendar_and_filter_the_recipes():
+    assert [menu.season(date(2026, m, 15)) for m in (1, 4, 7, 10, 12)] == ["invierno", "primavera", "verano", "otoño", "invierno"]
+    summer = {d[m]["id"] for wk in (date(2026, 7, 6), date(2026, 7, 13), date(2026, 8, 3)) for d in menu.plan(wk) for m in ("comida", "cena")}
+    winter = {d[m]["id"] for wk in (date(2027, 1, 4), date(2027, 1, 11), date(2027, 2, 1)) for d in menu.plan(wk) for m in ("comida", "cena")}
+    by_id = {r["id"]: r for r in menu.recetario()["recetas"]}
+    assert all("verano" in (by_id[i].get("temporada") or ["verano"]) for i in summer)
+    assert all("invierno" in (by_id[i].get("temporada") or ["invierno"]) for i in winter)
+    assert "gazpacho-huevo" not in winter and "ternera-guisada" not in summer
+
+
+def test_swapping_a_dish_keeps_its_group_avoids_repeats_and_survives_restart(tmp_path):
+    path = tmp_path / "menu.json"
+    s = menu.Store(path)
+    day = date(2026, 11, 18)  # miércoles: comida de carne blanca
+    before = next(d for d in s.plan(day) if d["fecha"] == "2026-11-18")["comida"]
+    assert s.swap(day, "comida") is True
+    days = menu.Store(path).plan(day)
+    after = next(d for d in days if d["fecha"] == "2026-11-18")["comida"]
+    assert after["id"] != before["id"] and after["grupo"] == before["grupo"] and after["cambiado"] is True
+    ids = [d[m]["id"] for d in days for m in ("comida", "cena")]
+    assert len(ids) == len(set(ids))
+    # La lista de ingredientes sale del menú cambiado
+    names = {i["nombre"] for sec in menu.week_view(day, s, [])["compra"] for i in sec["items"]}
+    assert {i["nombre"] for i in after["ingredientes"]} <= names
+    # Dando vueltas se vuelve al plato original y el cambio se borra
+    for _ in range(10):
+        s.swap(day, "comida")
+        if next(d for d in s.plan(day) if d["fecha"] == "2026-11-18")["comida"]["id"] == before["id"]:
+            break
+    assert "cambiado" not in next(d for d in s.plan(day) if d["fecha"] == "2026-11-18")["comida"]
+    assert s.changes.get("2026-11-16", {}) == {}
+
+
+def test_swap_endpoint(client):
+    week = client.get("/api/menu").json()
+    fecha = week["dias"][-1]["fecha"]  # el domingo de esta semana: nunca es pasado para el servidor
+    before = week["dias"][-1]["cena"]["id"]
+    r = client.post("/api/menu/cambiar", json={"fecha": fecha, "momento": "cena"})
+    assert r.status_code == 200 and r.json()["dias"][-1]["cena"]["id"] != before
+    assert client.get("/api/menu").json()["dias"][-1]["cena"]["cambiado"] is True
+    assert client.post("/api/menu/cambiar", json={"fecha": fecha, "momento": "merienda"}).status_code == 400
+    assert client.post("/api/menu/cambiar", json={"fecha": "2020-01-01", "momento": "cena"}).status_code == 400
+    assert client.post("/api/menu/cambiar", json={"fecha": "ayer"}).status_code == 400

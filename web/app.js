@@ -145,8 +145,25 @@ function skyFor(now) {
   return "dusk";
 }
 
+// Modo oscuro: «auto» (del atardecer al amanecer), «siempre» o «nunca», según pantalla.modo_oscuro
+function applyTheme(now) {
+  const mode = state.darkMode || "auto";
+  const sky = skyFor(now);
+  const dark = mode === "siempre" || (mode !== "nunca" && (sky === "night" || (sky === "dusk" && now > sunsetOf(now))));
+  const root = document.documentElement;
+  if ((root.dataset.theme === "dark") === dark) return;
+  if (dark) root.dataset.theme = "dark"; else delete root.dataset.theme;
+  document.querySelector('meta[name="theme-color"]').content = dark ? "#171411" : "#F7EEE2";
+  if (state.user) render();  // los colores que se calculan al pintar
+}
+function sunsetOf(now) {
+  const d = dailyFor(now);
+  return d ? new Date(d.sunset) : new Date(+startOfDay(now) + 19 * 3600e3);
+}
+
 function tick() {
   const now = new Date();
+  applyTheme(now);
   const sky = skyFor(now);
   $("lock").dataset.sky = sky;
   $("band").dataset.sky = sky;
@@ -209,7 +226,7 @@ function go(view) {
 }
 
 function setupRail() {
-  document.querySelectorAll(".nav").forEach((b) => {
+  document.querySelectorAll(".nav[data-go], .nav[data-action]").forEach((b) => {
     const name = b.dataset.go || b.dataset.action;
     b.innerHTML = `${icon(name)}<span>${LABELS[name]}</span>`;
     b.addEventListener("click", () => {
@@ -219,6 +236,29 @@ function setupRail() {
     });
   });
   $("me").addEventListener("click", lock);
+  $("alerts").addEventListener("click", openAlerts);
+}
+
+// ---------- Avisos de mantenimiento ----------
+
+const BELL = '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>';
+
+function renderAlerts() {
+  const list = state.home?.avisos || [];
+  const b = $("alerts");
+  b.hidden = !list.length || !state.user;
+  b.innerHTML = `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${BELL}</svg><span>Avisos</span><em>${list.length}</em>`;
+}
+
+function openAlerts() {
+  const list = state.home?.avisos || [];
+  $("modal").querySelector(".modal-card").setAttribute("style", "--event:#D9483B");
+  $("modal-cal").textContent = "AVISOS";
+  $("modal-title").textContent = list.length === 1 ? "Una cosa que revisar" : `${list.length} cosas que revisar`;
+  $("modal-when").textContent = "";
+  $("modal-extra").textContent = list.map((a) => `• ${a.texto}`).join("\n\n");
+  $("modal").hidden = false;
+  $("modal-close").focus();
 }
 
 function resetIdle() {
@@ -268,10 +308,31 @@ function openMeal(fecha) {
   $("modal-cal").textContent = "MENÚ DEL DÍA";
   $("modal-title").textContent = cap(new Date(fecha + "T12:00").toLocaleDateString(ES, { weekday: "long", day: "numeric", month: "long" }));
   $("modal-when").textContent = `Para ${per} ${per === 1 ? "persona" : "personas"} · los ingredientes, en Tareas`;
-  $("modal-extra").textContent = MEALS.filter(([k]) => m[k]).map(([k, ic, label]) =>
-    `${ic} ${label}: ${m[k].nombre}\n${m[k].ingredientes.map((i) => `${i.nombre} ${i.texto}`).join(" · ")}`).join("\n\n");
+  // Los días pasados no se cambian
+  const canSwap = fecha >= dayKey(new Date());
+  $("modal-extra").innerHTML = MEALS.filter(([k]) => m[k]).map(([k, ic, label]) => `<div class="meal-row">
+      <div><b>${ic} ${label}: ${esc(m[k].nombre)}</b>${esc(m[k].ingredientes.map((i) => `${i.nombre} ${i.texto}`).join(" · "))}</div>
+      ${canSwap ? `<button class="swap" data-swap="${k}" ${state.menuBusy ? "disabled" : ""}>Cambiar</button>` : ""}</div>`).join("");
+  $("modal-extra").querySelectorAll("[data-swap]").forEach((b) => b.addEventListener("click", () => swapMeal(fecha, b.dataset.swap)));
   $("modal").hidden = false;
   $("modal-close").focus();
+}
+
+async function swapMeal(fecha, momento) {
+  if (state.menuBusy) return;
+  state.menuBusy = `${fecha}|${momento}`;
+  try {
+    const r = await fetch("/api/menu/cambiar", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fecha, momento }) });
+    if (r.ok) {
+      const week = await r.json();
+      const i = state.menu.findIndex((w) => w?.semana === week.semana);
+      if (i >= 0) state.menu[i] = week;
+    }
+  } catch (e) { console.warn(e); }
+  state.menuBusy = null;
+  render();
+  openMeal(fecha);
 }
 
 function bindMeals(root) {
@@ -412,7 +473,7 @@ function gauge(level, color, w = 150) {
   const x = cx + r * Math.cos(a), y = cy - r * Math.sin(a);
   const bg = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
   const fg = pct > 0 ? `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}` : "";
-  return `<svg viewBox="0 0 150 84" width="${w}" aria-hidden="true"><path d="${bg}" stroke="#EFE6DA" stroke-width="16" fill="none" stroke-linecap="round"/>
+  return `<svg viewBox="0 0 150 84" width="${w}" aria-hidden="true"><path d="${bg}" style="stroke:var(--track)" stroke-width="16" fill="none" stroke-linecap="round"/>
     ${fg ? `<path d="${fg}" stroke="${color}" stroke-width="16" fill="none" stroke-linecap="round"/>` : ""}</svg>`;
 }
 const carColor = (c) => c.cargando ? "#1E90E8" : c.bateria > 50 ? "#3BA55C" : c.bateria >= 20 ? "#F5A623" : "#D9483B";
@@ -546,7 +607,7 @@ function drawCurve(temps, nowHour) {
   const area = `${line} L ${pts.at(-1)[0]} ${H} L ${pts[0][0]} ${H} Z`;
   const band = nowHour != null ? `<rect x="${x(nowHour) - 15}" y="0" width="30" height="${H}" rx="8" fill="#F5A623" opacity=".18"/>` : "";
   const labels = pts.map(([px, py], i) => `<text x="${px}" y="${py - 11}">${Math.round(temps[i])}</text>`).join("");
-  const dots = pts.map(([px, py]) => `<circle cx="${px}" cy="${py}" r="4.5" fill="#F5A623" stroke="#FFFDF9" stroke-width="2"/>`).join("");
+  const dots = pts.map(([px, py]) => `<circle cx="${px}" cy="${py}" r="4.5" fill="#F5A623" style="stroke:var(--card)" stroke-width="2"/>`).join("");
   box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-label="Temperatura por horas">
     <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5A623" stop-opacity=".28"/><stop offset="1" stop-color="#F5A623" stop-opacity="0"/></linearGradient></defs>
     ${band}<path d="${area}" fill="url(#g)"/><path d="${line}" fill="none" stroke="#F5A623" stroke-width="3"/>${dots}${labels}</svg>`;
@@ -566,7 +627,7 @@ function renderEnergy() {
   const at = (p) => p ? hm(localTime(p.time)).slice(0, 2) + "h" : "";
   const minP = e.today.reduce((a, p) => (!a || p.eur_kwh < a.eur_kwh ? p : a), null);
   const maxP = e.today.reduce((a, p) => (!a || p.eur_kwh > a.eur_kwh ? p : a), null);
-  const nowColor = e.now ? priceColor(e.now.eur_kwh, e.min, e.max) : "#A6998A";
+  const nowColor = e.now ? priceColor(e.now.eur_kwh, e.min, e.max) : "var(--ink-muted)";
   $("energy").innerHTML = head("⚡", "Luz hoy", "#F5A623") + `
     <div class="chips">
       <div class="chip now" style="background:${nowColor}"><small>Ahora</small><b>${euros(e.now?.eur_kwh)}</b></div>
@@ -577,12 +638,16 @@ function renderEnergy() {
     <div class="bars">${priceBars(e.today, e, now)}</div>
     <div class="axis"><span>0</span><span>3</span><span>6</span><span>9</span><span>12</span><span>15</span><span>18</span><span>21</span><span>23</span></div>` + staleNote(block);
 
-  const recs = e.recommendations.filter((r) => r.tramo).map((r) => {
+  const full = e.recommendations.filter((r) => r.carga?.completa).map((r) => `<div class="rec ok"><span class="e">${esc(r.emoji)}</span>
+    <div class="t"><small>${esc(r.nombre)}</small><b>No hace falta cargar</b>
+    <span class="cost">Batería al ${Math.round(r.carga.bateria)} %, límite ${Math.round(r.carga.limite)} %</span></div></div>`).join("");
+  const recs = full + e.recommendations.filter((r) => r.tramo).map((r) => {
     const s = localTime(r.tramo.start), f = localTime(r.tramo.end);
     // Lo que costaría: el coche, con la potencia de cada periodo; los electrodomésticos, un ciclo
     const c = r.coste;
     const cost = c ? `<span class="cost">≈ ${c.kwh.toLocaleString(ES, { maximumFractionDigits: c.kwh < 10 ? 2 : 0 })} kWh · ${c.eur.toLocaleString(ES, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €${c.periodos && r.id === "coche" ? ` · ${c.periodos.join(" y ")}` : ""}</span>` : "";
-    return `<div class="rec ok"><span class="e">${esc(r.emoji)}</span><div class="t"><small>${esc(r.nombre)}</small>
+    const range = r.carga ? ` · del ${Math.round(r.carga.bateria)} al ${Math.round(r.carga.limite)} %` : "";
+    return `<div class="rec ok"><span class="e">${esc(r.emoji)}</span><div class="t"><small>${esc(r.nombre)}${range}</small>
       <b>${relDay(s, now)} ${hm(s)}–${hm(f)}</b>${cost}</div><span class="p">${euros(r.tramo.avg_eur_kwh)} €</span></div>`;
   }).join("");
   const wait = e.wait_for_tomorrow ? `<div class="rec"><span class="e">⏳</span><div class="t note">Lo que queda de hoy es caro: mejor esperar al precio de mañana (sale sobre las 20:30).</div></div>` : "";
@@ -590,7 +655,7 @@ function renderEnergy() {
     const s = localTime(e.avoid.start), f = localTime(e.avoid.end);
     return `<div class="rec bad"><span class="e">⛔</span><div class="t"><small>Mejor evitar</small><b>hoy ${hm(s)}–${hm(f)}</b></div><span class="p">${euros(e.avoid.avg_eur_kwh)} €</span></div>`;
   })() : "";
-  const costNote = e.recommendations.some((r) => r.coste) ? `<p class="note rec-note">Coste con impuestos. El coche, a la potencia de cada periodo (más en valle).</p>` : "";
+  const costNote = e.recommendations.some((r) => r.coste) ? `<p class="note rec-note">Coste con impuestos. El coche, lo que le falta hasta su límite, a la potencia de cada periodo.</p>` : "";
   $("best").innerHTML = head("🕑", "Mejores horas", "#3BA55C") + `<div class="recs">${recs}${wait}${avoid}</div>${costNote}`;
 }
 
@@ -606,6 +671,16 @@ function hourRanges(times, now) {
     if (last && +t - +last.end === 3600e3) last.end = t; else out.push({ start: t, end: t });
   }
   return out.map((r) => `${dayKey(r.start) === dayKey(now) ? "" : relDay(r.start, now) + " "}${r.start.getHours()}–${r.end.getHours() + 1} h`).join(" · ");
+}
+
+// Lo que de verdad ha gastado el aire, según el circuito de climatización del Shelly
+function realAir(r) {
+  if (!r) return "";
+  const money = (v) => v == null ? "" : ` · ${v.toLocaleString(ES, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  const day = (label, d) => d && d.kwh >= 0.3 ? `${label} <b>${d.kwh.toLocaleString(ES, { maximumFractionDigits: 1 })} kWh${money(d.eur)}</b>` : `${label} sin usar`;
+  const parts = [day("hoy", r.hoy), day("ayer", r.ayer)];
+  if (r.semana) parts.push(`7 días <b>${r.semana.kwh.toLocaleString(ES, { maximumFractionDigits: 0 })} kWh${money(r.semana.eur)}</b>`);
+  return `<p class="note hc-real">⚡ Gasto real del aire: ${parts.join(" · ")}.</p>`;
 }
 
 function renderHeatCost() {
@@ -630,11 +705,11 @@ function renderHeatCost() {
       <div style="--tint:${AIR}"><small>❄️ Aire · COP ${n.cop.toLocaleString(ES)}</small><b>${euros(n.aire)} €</b></div>
       <div style="--tint:${GAS}"><small>🔥 Caldera de gas</small><b>${euros(n.gas)} €</b></div>
     </div>
-    <p class="note hc-unit">Por kWh de calor, con impuestos. Barras: el aire hora a hora; la línea, el gas.</p>
+    <p class="note hc-unit">€ por kWh de calor, con impuestos. Barras, el aire; línea, el gas.</p>
     <div class="hc-chart"><div class="bars">${bars}</div><div class="hc-gas" style="bottom:${(h.gas.eur_kwh_calor / max) * 100}%"></div></div>
     <div class="axis">${ticks}</div>
     <p class="note hc-sum">${gasHours} Ahora la luz está a <b>${euros(n.pvpc)} €/kWh</b>; con ${Math.round(n.temp)}° fuera,
-      el aire sale más barato mientras esté por debajo de <b>${euros(h.empate_pvpc)} €/kWh</b> (precio PVPC, como en «Luz hoy»).</p>`;
+      el aire sale más barato mientras esté por debajo de <b>${euros(h.empate_pvpc)} €/kWh</b> (precio PVPC, como en «Luz hoy»).</p>${realAir(h.real)}`;
 }
 
 function renderCar() {
@@ -678,7 +753,7 @@ function renderTrips() {
     const tmin = Math.min(...vals), tmax = Math.max(...vals);
     const ref = { min: tmin, max: tmax };
     const bars = e.tomorrow.map((p) => `<div class="bar" style="height:${Math.max(3, (p.eur_kwh / tmax) * 100)}%;background:${priceColor(p.eur_kwh, ref.min, ref.max)}"></div>`).join("");
-    $("tomorrow").innerHTML = head("📅", "Luz mañana", "#F5A623", `<span class="pill" style="--tint:#6E6358">mín ${euros(tmin)} · máx ${euros(tmax)}</span>`)
+    $("tomorrow").innerHTML = head("📅", "Luz mañana", "#F5A623", `<span class="pill" style="--tint:var(--ink-soft)">mín ${euros(tmin)} · máx ${euros(tmax)}</span>`)
       + `<div class="bars">${bars}</div><div class="axis"><span>0</span><span>6</span><span>12</span><span>18</span><span>23</span></div>`;
   } else {
     $("tomorrow").innerHTML = head("📅", "Luz mañana", "#F5A623") + `<p class="empty">Red Eléctrica publica el precio de mañana sobre las 20:30.</p>`;
@@ -744,7 +819,7 @@ function renderHeating(h) {
   const valves = (h.valvulas || []).map((v) => `<div class="room">
       <div class="who">${esc(v.nombre)}<small>${heatingNow(v) ? "🔥 calentando" : "en espera"}</small></div>
       <span class="now">${deg(v.actual)}°</span>${setpoint(v)}</div>`).join("");
-  $("heating").innerHTML = head("🔥", `${h.nombre} · ${t.nombre}`, "#D9483B", `<span class="pill" style="--tint:${heatingNow(t) ? "#D9483B" : "#6E6358"}">${status}</span>`) + `
+  $("heating").innerHTML = head("🔥", `${h.nombre} · ${t.nombre}`, "#D9483B", `<span class="pill" style="--tint:${heatingNow(t) ? "#D9483B" : "var(--ink-soft)"}">${status}</span>`) + `
     <div class="thermo">
       <div><small>Ahora</small><b class="huge">${deg(t.actual)}°</b></div>
       <div class="target"><small>Consigna</small>${setpoint(t, true)}</div>
@@ -835,7 +910,7 @@ function renderConsumption() {
     return;
   }
   const e = energy();
-  const color = e?.now ? priceColor(e.now.eur_kwh, e.min, e.max) : "#6E6358";
+  const color = e?.now ? priceColor(e.now.eur_kwh, e.min, e.max) : "var(--ink-soft)";
   $("power-now").innerHTML = head("⚡", "Consumo ahora", "#F5A623",
     c.ahora_eur_h != null ? `<span class="pill solid" style="--tint:${color}">${euros(c.ahora_eur_h)} €/h</span>` : "") + `
     <div class="pnow"><b>${c.ahora_w == null ? "–" : c.ahora_w >= 1000 ? (c.ahora_w / 1000).toLocaleString(ES, { maximumFractionDigits: 2 }) : Math.round(c.ahora_w)}</b>
@@ -849,7 +924,7 @@ function renderConsumption() {
   const priceOf = (t) => e?.today.find((p) => p.time === t)?.eur_kwh;
   const slots = Array.from({ length: Math.max(24, hours.length) }, (_, i) => hours[i]); // 25 el día del cambio de hora
   const bars = slots.map((h) => h
-    ? `<div class="bar" style="height:${Math.max(3, (h.kwh / maxK) * 100)}%;background:${priceOf(h.time) != null ? priceColor(priceOf(h.time), e.min, e.max) : "#A6998A"}"
+    ? `<div class="bar" style="height:${Math.max(3, (h.kwh / maxK) * 100)}%;background:${priceOf(h.time) != null ? priceColor(priceOf(h.time), e.min, e.max) : "var(--ink-muted)"}"
         title="${h.time.slice(11)} · ${h.kwh.toLocaleString(ES)} kWh"></div>`
     : `<div class="bar empty-bar"></div>`).join("");
   const total = c.hoy_kwh != null ? `<span class="pill" style="--tint:#3F7FD9">${c.hoy_kwh.toLocaleString(ES, { maximumFractionDigits: 1 })} kWh${c.hoy_eur != null ? ` · ${c.hoy_eur.toLocaleString(ES, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : ""}</span>` : "";
@@ -907,6 +982,7 @@ function renderLists() {
 
 function render() {
   tick();
+  renderAlerts();
   renderLockWeather();
   if (!state.user) return;
   switch (state.view) {
@@ -958,6 +1034,7 @@ async function start() {
     const info = await getJSON("/api/usuarios");
     state.users = info.usuarios;
     state.idleMs = (info.volver_al_bloqueo_s || 120) * 1000;
+    state.darkMode = info.modo_oscuro;
   } catch (e) { console.warn(e); $("offline").hidden = false; }
   renderAvatars();
   ["pointerdown", "keydown"].forEach((ev) => document.addEventListener(ev, resetIdle, { passive: true }));

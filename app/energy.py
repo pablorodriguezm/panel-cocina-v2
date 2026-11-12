@@ -119,8 +119,56 @@ def window_cost(prices: list[HourPrice], window: Window, rec: dict, holidays: fr
     return {"kwh": round(kwh, 2), "eur": round(eur * tax_factor, 2), "periodos": periods}
 
 
+def _power(rec: dict, t: datetime, holidays: frozenset[date]) -> float:
+    pk = rec.get("potencia_kw") or 0
+    return float(pk.get(period(t, holidays), 0)) if isinstance(pk, dict) else float(pk)
+
+
+def charge_window(prices: list[HourPrice], now: datetime, need_kwh: float, rec: dict,
+                  holidays: frozenset[date] = frozenset(), tax_factor: float = 1.0) -> tuple[Window, dict] | None:
+    """El tramo seguido más barato que mete `need_kwh` en el coche, a la potencia de cada periodo. Dura lo que haga
+    falta (la última hora puede quedar a medias). Como los demás tramos, solo si sale por debajo de la media del día."""
+    start_hour = now.replace(minute=0, second=0, microsecond=0)
+    hours = sorted((p for p in prices if p.time >= start_hour), key=lambda p: p.time)
+    best = None
+    for i in range(len(hours)):
+        got = cost = 0.0
+        end = None
+        for j, p in enumerate(hours[i:]):
+            if j and p.time != hours[i + j - 1].time + timedelta(hours=1):
+                break  # hueco en los precios
+            kw = _power(rec, p.time, holidays)
+            if kw <= 0:
+                break
+            part = min(1.0, (need_kwh - got) / kw)
+            got += kw * part
+            cost += kw * part * p.eur_kwh
+            if got >= need_kwh - 1e-9:
+                end = p.time + timedelta(minutes=round(part * 60))
+                break
+        if end is not None and (best is None or cost < best[0] - 1e-9):
+            best = (cost, hours[i].time, end)
+    if best is None:
+        return None
+    cost, start, end = best
+    avg = cost / need_kwh
+    if avg > _day_averages(prices).get(start.date(), float("inf")):
+        return None
+    used = [p for p in hours if start <= p.time < end]
+    periods = sorted({period(p.time, holidays) for p in used}, key=["valle", "llano", "punta"].index)
+    return Window(start, end, avg), {"kwh": round(need_kwh, 1), "eur": round(cost * tax_factor, 2), "periodos": periods}
+
+
+def car_need(car: dict | None, capacity_kwh: float, efficiency: float = 0.9) -> dict | None:
+    """kWh de la red que faltan para llevar la batería a su límite de carga, o None si no se sabe."""
+    if not car or car.get("bateria") is None or car.get("limite_carga") is None:
+        return None
+    missing = max(0.0, car["limite_carga"] - car["bateria"]) / 100 * capacity_kwh / efficiency
+    return {"falta_kwh": round(missing, 1), "bateria": car["bateria"], "limite": car["limite_carga"]}
+
+
 def summary(prices: list[HourPrice], now: datetime, recommendations: list[dict], *,
-            holidays: frozenset[date] = frozenset(), tax_factor: float = 1.0) -> dict:
+            holidays: frozenset[date] = frozenset(), tax_factor: float = 1.0, car: dict | None = None) -> dict:
     """Todo lo que pinta la tarjeta de la luz: precio actual, día, mañana y recomendaciones."""
     today = now.date()
     tomorrow = today + timedelta(days=1)
@@ -130,9 +178,18 @@ def summary(prices: list[HourPrice], now: datetime, recommendations: list[dict],
 
     recs = []
     for r in recommendations:
+        base = {"id": r["id"], "nombre": r["nombre"], "emoji": r.get("emoji", ""), "horas": r["horas"]}
+        # El coche, a medida: lo que le falta hasta su límite de carga, si se sabe (`car` viene de car_need)
+        if r["id"] == "coche" and car and r.get("potencia_kw"):
+            if car["falta_kwh"] < 0.5:
+                recs.append({**base, "tramo": None, "coste": None, "carga": {**car, "completa": True}})
+                continue
+            found = charge_window(prices, now, car["falta_kwh"], r, holidays, tax_factor)
+            recs.append({**base, "tramo": found[0].to_json() if found else None, "coste": found[1] if found else None,
+                         "carga": {**car, "completa": False}})
+            continue
         w = cheapest_window(prices, now, int(r["horas"]))
-        recs.append({"id": r["id"], "nombre": r["nombre"], "emoji": r.get("emoji", ""), "horas": r["horas"],
-                     "tramo": w.to_json() if w else None,
+        recs.append({**base, "tramo": w.to_json() if w else None,
                      "coste": window_cost(prices, w, r, holidays, tax_factor) if w else None})
     avoid = most_expensive_today(prices, now)
 
@@ -145,7 +202,7 @@ def summary(prices: list[HourPrice], now: datetime, recommendations: list[dict],
         "avg": (sum(p.eur_kwh for p in day) / len(day)) if day else None,
         "tomorrow_known": tomorrow_known,
         # Sin tramo barato y sin el precio de mañana: mejor esperar a que REE lo publique (≈20:30)
-        "wait_for_tomorrow": bool(prices) and not tomorrow_known and any(r["tramo"] is None for r in recs),
+        "wait_for_tomorrow": bool(prices) and not tomorrow_known and any(r["tramo"] is None and not (r.get("carga") or {}).get("completa") for r in recs),
         "recommendations": recs,
         "avoid": avoid.to_json() if avoid else None,
     }

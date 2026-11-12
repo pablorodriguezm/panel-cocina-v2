@@ -19,7 +19,8 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 - **Luz:** tarifa PVPC por horas. Precio de la API pública de REE; recomendaciones de mejores horas (coche 4 h,
   lavavajillas y lavadora 2 h) que solo aconsejan, no encienden nada. Cada tramo dice lo que costaría con impuestos:
   el coche a la potencia de cada periodo de la 2.0TD (7 kW en valle, cargador y potencia contratada; 4,5 kW en llano y punta) y los
-  electrodomésticos con 0,65 kWh por ciclo.
+  electrodomésticos con 0,65 kWh por ciclo. El tramo del coche dura lo que le falta a la batería hasta su límite de
+  carga (Model Y Gran Autonomía, 75 kWh); sin datos del coche, 4 h fijas.
 - **Coche:** solo el Tesla.
 - **Aire:** solo el Daikin «climate.daikinap69395_room_temperature» (a veces sin corriente); los de Salón y H. Diego no van.
 - **Precio de la luz:** el PVPC de REE coincide con el sensor `sensor.esios_pvpc` de HA. El día del cambio de hora
@@ -30,16 +31,23 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 - **Usuarios:** pantalla de bloqueo con avatar de Pablo y de Rim, **sin PIN**. Lo común igual para los dos;
   lo personal (de momento el trayecto al trabajo, cada uno a un destino distinto) según quién entra.
 - **Menú semanal** (app/menu.py, `docs/MENU.md`): comida y cena saludables de un recetario fijo
-  (`app/recetario.yaml`, para 2 personas), elegidas con un plan equilibrado por día. Solo se enseña en el panel
+  (`app/recetario.yaml`, para 2 personas, con platos de temporada), elegidas con un plan equilibrado por día. Cada
+  plato se puede cambiar por otro del mismo tipo tocándolo. Solo se enseña en el panel
   (Hoy, Calendario y Tareas), no se escribe en el calendario de Apple. Sus ingredientes de la semana se pasan a la
   Compra tocándolos; el Atajo los recoge (`POST /api/recordatorios/recoger`) y los añade a Recordatorios.
 - **Calefacción: ¿gas o aire?** (app/calefaccion.py, `docs/CALEFACCION.md`): en Energía, qué sale más barato por
   kWh de calor, ahora y hora a hora: gas TUR.1 (`app/gas.yaml`, hay que añadir cada trimestre) ÷ rendimiento de la
   caldera Bosch Condens 2300i W, frente a PVPC con impuestos ÷ COP del Daikin ADEAS100A de conductos con la
-  temperatura de esa hora. Solo coste de uso, sin términos fijos. Solo aconseja, no enciende nada.
+  temperatura de esa hora. Solo coste de uso, sin términos fijos. Solo aconseja, no enciende nada. Debajo, el gasto
+  real del aire (app/aire.py): kWh y € diarios del circuito «Climatización» del Shelly, con los grados-día, para
+  afinar el COP con el tiempo (el Shelly mide luz, no calor: el COP no se mide directamente).
 - **Tarifa en vivo de Shelly** (app/shelly.py, `docs/SHELLY.md`): cada hora el panel manda el PVPC de esa hora
   (con impuestos) a Shelly Cloud, para que la app de Shelly calcule los costes con el precio real. Solo con
   `SHELLY_TARIFA_URL`.
+- **Copias de seguridad** (`deploy/copias-compose.yml`, `docs/COPIAS.md`): un stack aparte copia cada noche al
+  Synology (SMB, carpeta `copias-zimaos`) los volcados de todas las bases PostgreSQL, `/DATA/AppData` y los volúmenes
+  de Docker, sin las fotos de Immich. Avisa al panel al terminar (`POST /api/copias/ok`); si falta día y medio, sale
+  en Avisos.
 - **Calendarios extra** (app/calendarios.py, `docs/CALENDARIOS.md`): festivos de Madrid capital
   (`app/festivos.yaml`, hay que añadir cada año), Fórmula 1 (todas las sesiones, API Jolpica) y partidos del
   Real Madrid y del Barça (todas las competiciones, un .ics por equipo). Solo en el panel, no en el calendario de
@@ -48,7 +56,9 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   Casa, Energía, Consumo, Tareas, Actualizar, Dormir y la hora) con una vista por sección. Las capturas de referencia están en
   github.com/pablorodriguezm/panel-cocina/tree/main/docs/capturas. No volver a una sola pantalla.
 - **Estilo:** paleta y tipografía de los repos de referencia (crema `#F7EEE2`, tarjetas `#FFFDF9`, Geist,
-  cabecera con el cielo según la hora). Al usuario le gustan; mantenlos.
+  cabecera con el cielo según la hora). Al usuario le gustan; mantenlos. Del atardecer al amanecer pasa solo a un
+  **modo oscuro** (misma paleta de acentos sobre fondo `#171411`; `pantalla.modo_oscuro`: auto, siempre o nunca).
+  Los colores van por variables CSS (`:root[data-theme="dark"]`): no pongas neutros fijos en el JS.
 
 ## Cómo se trabaja
 
@@ -58,7 +68,8 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   No toques a mano la línea `image:` de ese fichero.
 - Despliegue real: ZimaOS en 192.168.1.34 (Portainer :9000, panel :8090), Home Assistant en 192.168.1.202.
   La configuración vive en el servidor en /DATA/AppData/panel-cocina/config/config.yaml.
-- Secretos solo en variables de Portainer o `.env` (ignorado): `HA_TOKEN`, `PANEL_TOKEN`, `SHELLY_TARIFA_URL`
+- Secretos solo en variables de Portainer o `.env` (ignorado): `HA_TOKEN`, `PANEL_TOKEN`, `SHELLY_TARIFA_URL` y,
+  en el stack de copias, `SMB_USER` y `SMB_PASSWORD`
   (copia en Bitwarden → ZIMA_OS). `config/config.yaml`
   tampoco se sube.
 - Antes de un PR: `python -m pytest -q`. Para ver la interfaz sin Home Assistant:

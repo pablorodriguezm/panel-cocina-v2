@@ -4,6 +4,7 @@
 # - comida / cena: en qué momento del día puede salir.
 # - grupo: lo que usa el plan semanal para equilibrar (app/menu.py): legumbre, pescado, carne_blanca, carne_roja,
 #   cereal, huevo, verdura.
+# - temporada: opcional, [primavera, verano, otoño, invierno]. Sin ella, el plato sale todo el año.
 # - ingredientes: {nombre, cantidad, unidad, seccion}. Para sumar la lista de la semana, el mismo ingrediente se
 #   escribe siempre igual. Unidades: g, ml, ud, diente, lata, manojo, barra.
 # - Lo de la despensa de siempre (aceite, sal, especias…) va en «basicos»: no sale en la lista para comprar.
@@ -19,6 +20,7 @@ recetas:
     nombre: Lentejas estofadas con verduras
     comida: true
     grupo: legumbre
+    temporada: [otoño, invierno]
     ingredientes:
       - {nombre: Lentejas pardinas, cantidad: 160, unidad: g, seccion: Despensa}
       - {nombre: Zanahoria, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
@@ -46,6 +48,7 @@ recetas:
     nombre: Alubias blancas con verduras
     comida: true
     grupo: legumbre
+    temporada: [otoño, invierno]
     ingredientes:
       - {nombre: Alubias blancas cocidas, cantidad: 400, unidad: g, seccion: Despensa}
       - {nombre: Puerro, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
@@ -57,6 +60,7 @@ recetas:
     nombre: Potaje de garbanzos con bacalao y espinacas
     comida: true
     grupo: legumbre
+    temporada: [otoño, invierno]
     ingredientes:
       - {nombre: Garbanzos cocidos, cantidad: 400, unidad: g, seccion: Despensa}
       - {nombre: Bacalao desalado, cantidad: 200, unidad: g, seccion: Pescadería}
@@ -70,6 +74,7 @@ recetas:
     nombre: Lentejas con arroz integral y calabaza
     comida: true
     grupo: legumbre
+    temporada: [otoño, invierno]
     ingredientes:
       - {nombre: Lentejas pardinas, cantidad: 140, unidad: g, seccion: Despensa}
       - {nombre: Arroz integral, cantidad: 60, unidad: g, seccion: Despensa}
@@ -82,6 +87,7 @@ recetas:
     nombre: Ensalada completa de garbanzos y atún
     comida: true
     grupo: legumbre
+    temporada: [primavera, verano]
     ingredientes:
       - {nombre: Garbanzos cocidos, cantidad: 400, unidad: g, seccion: Despensa}
       - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
@@ -143,6 +149,7 @@ recetas:
     nombre: Pollo al horno con boniato y calabacín
     comida: true
     grupo: carne_blanca
+    temporada: [otoño, invierno]
     ingredientes:
       - {nombre: Muslos de pollo, cantidad: 4, unidad: ud, seccion: Carnicería}
       - {nombre: Boniato, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
@@ -181,6 +188,7 @@ recetas:
     nombre: Pollo guisado con champiñones y patata
     comida: true
     grupo: carne_blanca
+    temporada: [otoño, invierno]
     ingredientes:
       - {nombre: Muslos de pollo, cantidad: 4, unidad: ud, seccion: Carnicería}
       - {nombre: Champiñones, cantidad: 250, unidad: g, seccion: Fruta y verdura}
@@ -234,6 +242,7 @@ recetas:
     nombre: Ternera guisada con verduras
     comida: true
     grupo: carne_roja
+    temporada: [otoño, invierno]
     ingredientes:
       - {nombre: Ternera para guisar, cantidad: 400, unidad: g, seccion: Carnicería}
       - {nombre: Zanahoria, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
@@ -261,6 +270,7 @@ recetas:
     nombre: Crema de calabaza y tostada con queso fresco
     cena: true
     grupo: verdura
+    temporada: [otoño, invierno]
     ingredientes:
       - {nombre: Calabaza, cantidad: 600, unidad: g, seccion: Fruta y verdura}
       - {nombre: Puerro, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
@@ -307,6 +317,7 @@ recetas:
     nombre: Coliflor gratinada con ensalada verde
     cena: true
     grupo: verdura
+    temporada: [otoño, invierno]
     ingredientes:
       - {nombre: Coliflor, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
       - {nombre: Leche, cantidad: 300, unidad: ml, seccion: Huevos y lácteos}
@@ -318,6 +329,7 @@ recetas:
     nombre: Ensalada templada de quinoa, aguacate y huevo
     cena: true
     grupo: verdura
+    temporada: [primavera, verano]
     ingredientes:
       - {nombre: Quinoa, cantidad: 120, unidad: g, seccion: Despensa}
       - {nombre: Aguacate, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
@@ -457,3 +469,132 @@ recetas:
       - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
       - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
       - {nombre: Aguacate, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  # ---------- De temporada: primavera y verano ----------
+  - id: ensalada-lentejas
+    nombre: Ensalada de lentejas con verduras y huevo
+    comida: true
+    grupo: legumbre
+    temporada: [primavera, verano]
+    ingredientes:
+      - {nombre: Lentejas cocidas, cantidad: 400, unidad: g, seccion: Despensa}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento verde, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla morada, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Vinagre}
+
+  - id: ensalada-alubias-atun
+    nombre: Ensalada de alubias blancas con atún y tomate
+    comida: true
+    grupo: legumbre
+    temporada: [primavera, verano]
+    ingredientes:
+      - {nombre: Alubias blancas cocidas, cantidad: 400, unidad: g, seccion: Despensa}
+      - {nombre: Atún en conserva, cantidad: 2, unidad: lata, seccion: Despensa}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla morada, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Rúcula, cantidad: 50, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Vinagre}
+
+  - id: gazpacho-huevo
+    nombre: Gazpacho con huevo duro y jamón
+    cena: true
+    grupo: verdura
+    temporada: [primavera, verano]
+    ingredientes:
+      - {nombre: Tomate, cantidad: 6, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pepino, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento verde, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 1, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Jamón serrano, cantidad: 80, unidad: g, seccion: Carnicería}
+      - {nombre: Pan integral, cantidad: 1, unidad: barra, seccion: Panadería}
+      - {nombre: Vinagre}
+
+  - id: ensalada-pasta
+    nombre: Ensalada de pasta integral con atún y tomate
+    comida: true
+    grupo: cereal
+    temporada: [primavera, verano]
+    ingredientes:
+      - {nombre: Pasta integral, cantidad: 180, unidad: g, seccion: Despensa}
+      - {nombre: Atún en conserva, cantidad: 2, unidad: lata, seccion: Despensa}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pepino, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Queso fresco, cantidad: 100, unidad: g, seccion: Huevos y lácteos}
+
+  - id: pollo-plancha-ensalada
+    nombre: Pollo a la plancha con arroz y ensalada de tomate
+    comida: true
+    grupo: carne_blanca
+    temporada: [primavera, verano]
+    ingredientes:
+      - {nombre: Pechuga de pollo, cantidad: 350, unidad: g, seccion: Carnicería}
+      - {nombre: Arroz integral, cantidad: 120, unidad: g, seccion: Despensa}
+      - {nombre: Tomate, cantidad: 3, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla morada, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Orégano}
+
+  # ---------- De temporada: otoño e invierno ----------
+  - id: sopa-verduras-fideos
+    nombre: Sopa de verduras con fideos y huevo
+    cena: true
+    grupo: verdura
+    temporada: [otoño, invierno]
+    ingredientes:
+      - {nombre: Caldo de verduras, cantidad: 800, unidad: ml, seccion: Despensa}
+      - {nombre: Zanahoria, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Puerro, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Judías verdes, cantidad: 150, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Fideos, cantidad: 60, unidad: g, seccion: Despensa}
+      - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+
+  - id: arroz-caldoso-pollo
+    nombre: Arroz caldoso con pollo y verduras
+    comida: true
+    grupo: cereal
+    temporada: [otoño, invierno]
+    ingredientes:
+      - {nombre: Arroz redondo, cantidad: 160, unidad: g, seccion: Despensa}
+      - {nombre: Muslos de pollo, cantidad: 2, unidad: ud, seccion: Carnicería}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Judías verdes, cantidad: 150, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Tomate triturado, cantidad: 100, unidad: g, seccion: Despensa}
+      - {nombre: Caldo de verduras, cantidad: 900, unidad: ml, seccion: Despensa}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Pimentón dulce}
+
+  # ---------- Todo el año: más variedad para poder cambiar platos ----------
+  - id: garbanzos-salteados
+    nombre: Garbanzos salteados con verduras y gambas
+    comida: true
+    grupo: legumbre
+    ingredientes:
+      - {nombre: Garbanzos cocidos, cantidad: 400, unidad: g, seccion: Despensa}
+      - {nombre: Gambas peladas, cantidad: 150, unidad: g, seccion: Pescadería}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pimiento rojo, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Pimentón dulce}
+
+  - id: filetes-ternera-ensalada
+    nombre: Filetes de ternera a la plancha con patata asada y ensalada
+    comida: true
+    grupo: carne_roja
+    ingredientes:
+      - {nombre: Filetes de ternera, cantidad: 300, unidad: g, seccion: Carnicería}
+      - {nombre: Patata, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Lechuga, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+
+  - id: menestra-jamon
+    nombre: Menestra de verduras con jamón
+    cena: true
+    grupo: verdura
+    ingredientes:
+      - {nombre: Menestra de verduras congelada, cantidad: 500, unidad: g, seccion: Congelados}
+      - {nombre: Jamón serrano, cantidad: 80, unidad: g, seccion: Carnicería}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+      - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}

@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 
 import httpx
@@ -210,6 +211,42 @@ async def consumption(ha: HomeAssistant, prices: list) -> dict | None:
     out = cons.build(states, hourly, prices or [], current)
     out["horas_fuente"] = source
     return out
+
+
+async def air_real(ha: HomeAssistant, client: httpx.AsyncClient, store, prices: list, weather: dict | None) -> dict | None:
+    """Consumo real del aire (aire.py): lo de hoy hasta ahora y, una vez, cada día cerrado de la última semana."""
+    from . import aire, calefaccion, consumption as cons
+    entity = aire.entity()
+    if not entity:
+        return None
+    state = (await ha.states([entity]))[entity]
+    if not state:
+        return None
+    unit = state.get("attributes", {}).get("unit_of_measurement")
+    zone = config.zone()
+    now = datetime.now(zone)
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    temps = calefaccion.hourly_temps(weather)
+
+    async def hours(start: datetime, end: datetime, closed: bool) -> list[dict]:
+        rows = await ha.history(entity, start, end)
+        out = cons.hourly_from_power(rows, start, end, zone, unit)
+        return out[:-1] if closed else out  # un día cerrado trae de más la hora de las 00:00 siguientes
+
+    missing = store.missing(now.date())
+    if missing:
+        try:  # el PVPC de esos días, de una vez; si REE falla se reintenta en la siguiente vuelta
+            r = await client.get(energy.REE_URL, params=energy.ree_params(missing[0], missing[-1]), timeout=TIMEOUT)
+            r.raise_for_status()
+            old = {p.time.isoformat(timespec="minutes"): p.eur_kwh for p in energy.parse_ree(r.json(), zone)}
+            for day in missing:
+                start = datetime.combine(day, datetime.min.time(), zone)
+                store.add(day, aire.day_record(await hours(start, start + timedelta(days=1), True), old, temps))
+        except (httpx.HTTPError, ValueError) as e:
+            logging.getLogger("panel.aire").warning("Días anteriores sin apuntar: %s", e)
+    today_prices = {p.time.isoformat(timespec="minutes"): p.eur_kwh for p in prices}
+    today = aire.day_record(await hours(midnight, now, False), today_prices, temps)
+    return aire.summary(store, now.date(), today)
 
 
 async def commute(ha: HomeAssistant, user_id: str) -> dict | None:
