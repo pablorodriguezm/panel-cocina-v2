@@ -31,7 +31,8 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 - **Usuarios:** pantalla de bloqueo con avatar de Pablo y de Rim, **sin PIN**. Lo común igual para los dos;
   lo personal (de momento el trayecto al trabajo, cada uno a un destino distinto) según quién entra.
 - **Menú semanal** (app/menu.py, `docs/MENU.md`): comida y cena saludables de un recetario fijo
-  (`app/recetario.yaml`, para 2 personas), elegidas con un plan equilibrado por día. Solo se enseña en el panel
+  (`app/recetario.yaml`, para 2 personas, con platos de temporada), elegidas con un plan equilibrado por día. Cada
+  plato se puede cambiar por otro del mismo tipo tocándolo. Solo se enseña en el panel
   (Hoy, Calendario y Tareas), no se escribe en el calendario de Apple. Sus ingredientes de la semana se pasan a la
   Compra tocándolos; el Atajo los recoge (`POST /api/recordatorios/recoger`) y los añade a Recordatorios.
 - **Calefacción: ¿gas o aire?** (app/calefaccion.py, `docs/CALEFACCION.md`): en Energía, qué sale más barato por

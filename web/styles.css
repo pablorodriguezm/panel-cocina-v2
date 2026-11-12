@@ -367,6 +367,13 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .meals span { font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden; }
 .meals i { font-style: normal; margin-right: 4px; }
+.meal-row { display: flex; align-items: center; gap: 12px; white-space: normal; }
+.meal-row + .meal-row { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--highlight); }
+.meal-row div { flex: 1; min-width: 0; }
+.meal-row b { display: block; color: var(--ink); font-size: 17px; font-weight: 600; margin-bottom: 2px; }
+.swap { flex: none; padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; color: #2E9E5B;
+  background: color-mix(in srgb, #2E9E5B 13%, transparent); }
+.swap:disabled { opacity: .5; }
 .week-tabs { margin-bottom: 8px; }
 .week-tabs .sg { padding: 7px 8px; font-size: 14px; }
 .mi-hint { margin: 0 0 4px; font-size: 13px; }

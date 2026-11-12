@@ -5,6 +5,7 @@ GET  /api/hogar           → lo común: tiempo, luz (y si calentar con gas o ai
 POST /api/recordatorios   → el Atajo del iPhone envía las listas de Recordatorios (cabecera X-Panel-Token)
 POST /api/recordatorios/recoger → el Atajo recoge lo pasado a la compra desde el panel (cabecera X-Panel-Token)
 GET  /api/menu?semana=0   → menú de la semana (0 esta, 1 la siguiente) y sus ingredientes
+POST /api/menu/cambiar    → cambia la comida o la cena de un día por otro plato del mismo tipo
 POST /api/menu/compra     → pasa un ingrediente del menú a la compra (o lo quita si el Atajo aún no lo ha recogido)
 GET  /api/casa            → calefacción, aire, temperaturas y música
 GET  /api/consumo         → potencia de ahora, por aparato y consumo de hoy por horas
@@ -249,11 +250,27 @@ async def menu_to_shopping(request: Request):
         week, clave = _week(body.get("semana", 0)), str(body["clave"])
     except (ValueError, KeyError, AttributeError):
         raise HTTPException(400, "Se esperaba {semana, clave}")
-    item = next((i for s in menu.shopping(menu.plan(week)) for i in s["items"] if i["clave"] == clave), None)
+    item = next((i for s in menu.shopping(state["menu"].plan(week)) for i in s["items"] if i["clave"] == clave), None)
     if item is None:
         raise HTTPException(404, "Ese ingrediente no está en el menú de esa semana")
     state["menu"].toggle(week.isoformat(), item)
     return _menu_view(week)
+
+
+@app.post("/api/menu/cambiar")
+async def menu_swap(request: Request):
+    """Cambia la comida o la cena de un día (de esta semana o la siguiente) por otro plato del mismo tipo."""
+    try:
+        body = await request.json()
+        fecha, meal = date.fromisoformat(str(body["fecha"])), str(body["momento"])
+    except (ValueError, KeyError, TypeError, AttributeError):
+        raise HTTPException(400, "Se esperaba {fecha, momento}")
+    today = datetime.now(config.zone()).date()
+    if meal not in ("comida", "cena") or not 0 <= (menu.monday(fecha) - menu.monday(today)).days <= 7:
+        raise HTTPException(400, "Solo la comida o la cena de esta semana o la siguiente")
+    if not state["menu"].swap(fecha, meal):
+        raise HTTPException(409, "No hay otro plato de ese tipo esta semana")
+    return _menu_view(menu.monday(fecha))
 
 
 @app.get("/")

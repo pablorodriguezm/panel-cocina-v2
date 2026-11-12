@@ -308,10 +308,31 @@ function openMeal(fecha) {
   $("modal-cal").textContent = "MENÚ DEL DÍA";
   $("modal-title").textContent = cap(new Date(fecha + "T12:00").toLocaleDateString(ES, { weekday: "long", day: "numeric", month: "long" }));
   $("modal-when").textContent = `Para ${per} ${per === 1 ? "persona" : "personas"} · los ingredientes, en Tareas`;
-  $("modal-extra").textContent = MEALS.filter(([k]) => m[k]).map(([k, ic, label]) =>
-    `${ic} ${label}: ${m[k].nombre}\n${m[k].ingredientes.map((i) => `${i.nombre} ${i.texto}`).join(" · ")}`).join("\n\n");
+  // Los días pasados no se cambian
+  const canSwap = fecha >= dayKey(new Date());
+  $("modal-extra").innerHTML = MEALS.filter(([k]) => m[k]).map(([k, ic, label]) => `<div class="meal-row">
+      <div><b>${ic} ${label}: ${esc(m[k].nombre)}</b>${esc(m[k].ingredientes.map((i) => `${i.nombre} ${i.texto}`).join(" · "))}</div>
+      ${canSwap ? `<button class="swap" data-swap="${k}" ${state.menuBusy ? "disabled" : ""}>Cambiar</button>` : ""}</div>`).join("");
+  $("modal-extra").querySelectorAll("[data-swap]").forEach((b) => b.addEventListener("click", () => swapMeal(fecha, b.dataset.swap)));
   $("modal").hidden = false;
   $("modal-close").focus();
+}
+
+async function swapMeal(fecha, momento) {
+  if (state.menuBusy) return;
+  state.menuBusy = `${fecha}|${momento}`;
+  try {
+    const r = await fetch("/api/menu/cambiar", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fecha, momento }) });
+    if (r.ok) {
+      const week = await r.json();
+      const i = state.menu.findIndex((w) => w?.semana === week.semana);
+      if (i >= 0) state.menu[i] = week;
+    }
+  } catch (e) { console.warn(e); }
+  state.menuBusy = null;
+  render();
+  openMeal(fecha);
 }
 
 function bindMeals(root) {
