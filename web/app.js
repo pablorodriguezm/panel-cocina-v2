@@ -8,6 +8,7 @@ const ES = "es-ES";
 const CAL_NAME = "Rim y Pablo";
 
 const state = {
+  tv: { channels: null, current: null, playing: false, hls: null, error: null },
   users: [], user: null, view: "hoy", home: null, house: null, power: null, trips: {}, list: null, weatherDay: null,
   pending: {}, busy: null, houseError: null,
   menu: [], menuWeek: 0, menuBusy: null,  // menú de esta semana y de la siguiente
@@ -26,8 +27,9 @@ const ICONS = {
   tareas: '<path d="m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8"/>',
   refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
   sleep: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  tv: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/>',
 };
-const LABELS = { hoy: "Hoy", calendario: "Calendario", tiempo: "Tiempo", casa: "Casa", energia: "Energía", consumo: "Consumo", tareas: "Tareas", refresh: "Actualizar", sleep: "Dormir" };
+const LABELS = { hoy: "Hoy", calendario: "Calendario", tiempo: "Tiempo", casa: "Casa", energia: "Energía", consumo: "Consumo", tareas: "Tareas", tv: "TV", refresh: "Actualizar", sleep: "Dormir" };
 const icon = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
 
 // ---------- Utilidades ----------
@@ -204,6 +206,7 @@ function enter(id) {
 }
 
 function lock() {
+  stopTV();
   state.user = null;
   state.list = null;
   closeModal();
@@ -216,6 +219,7 @@ function go(view) {
   if (view === "casa") loadHouse();
   if (view === "consumo") loadConsumption();
   if (view === "tareas") loadMenu();
+  if (view === "tv") loadTV(); else stopTV();
   document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== view; });
   document.querySelectorAll(".nav[data-go]").forEach((b) => {
     const on = b.dataset.go === view;
@@ -263,7 +267,95 @@ function openAlerts() {
 
 function resetIdle() {
   clearTimeout(state.idleTimer);
-  if (state.user) state.idleTimer = setTimeout(lock, state.idleMs);
+  // Con la tele puesta no se vuelve a la pantalla de bloqueo
+  if (state.user) state.idleTimer = setTimeout(() => (state.tv.playing ? resetIdle() : lock()), state.idleMs);
+}
+
+// ---------- TV ----------
+
+function tvSaved() { try { return localStorage.getItem("tv-canal"); } catch { return null; } }
+
+async function loadTV() {
+  if (!state.tv.channels) {
+    try {
+      const r = await getJSON("/api/tv");
+      state.tv.channels = r.canales;
+      state.tv.error = r.error;
+    } catch (e) { console.warn(e); state.tv.error = "No se pudo cargar la lista de canales."; }
+  }
+  renderTV();
+}
+
+function renderTV() {
+  const chans = state.tv.channels || [];
+  const kind = { hls: "", atres: "Atresplayer", youtube: "YouTube", web: "Solo en su web" };
+  $("tv-list").innerHTML = head("📺", "Canales", "#3F7FD9") + (chans.length
+    ? `<div class="scroll tv-chans">${chans.map((c) => `<button class="tv-chan${state.tv.current === c.id ? " on" : ""}${c.tipo === "web" ? " ext" : ""}" data-tv="${esc(c.id)}">
+        <b>${esc(c.nombre)}</b>${kind[c.tipo] ? `<small>${kind[c.tipo]}</small>` : ""}</button>`).join("")}</div>`
+    : `<p class="empty">${esc(state.tv.error || "Cargando…")}</p>`);
+  $("tv-list").querySelectorAll("[data-tv]").forEach((b) => b.addEventListener("click", () => playTV(b.dataset.tv)));
+  if (!state.tv.current) {
+    const saved = chans.find((c) => c.id === tvSaved() && c.tipo !== "web");
+    if (saved) return playTV(saved.id);
+    $("tv-screen").innerHTML = `<div class="tv-idle"><span>📺</span><p>Elige un canal</p></div>`;
+  }
+}
+
+function stopTV() {
+  if (state.tv.hls) { state.tv.hls.destroy(); state.tv.hls = null; }
+  const v = $("tv-screen")?.querySelector("video");
+  if (v) { v.pause(); v.removeAttribute("src"); v.load(); }
+  if ($("tv-screen")) $("tv-screen").innerHTML = "";
+  state.tv.current = null;
+  state.tv.playing = false;
+}
+
+function playTV(id, sourceIndex = 0) {
+  const c = (state.tv.channels || []).find((x) => x.id === id);
+  if (!c) return;
+  stopTV();
+  state.tv.current = id;
+  try { if (c.tipo !== "web") localStorage.setItem("tv-canal", id); } catch { /* sin almacenamiento */ }
+  document.querySelectorAll(".tv-chan").forEach((b) => b.classList.toggle("on", b.dataset.tv === id));
+  const box = $("tv-screen");
+  const bar = (extra = "") => `<div class="tv-bar"><b>${esc(c.nombre)}</b><span class="tv-msg" id="tv-msg">${extra}</span>
+    <button class="tv-full" id="tv-full" aria-label="Pantalla completa">⛶</button></div>`;
+  if (c.tipo === "web") {
+    box.innerHTML = `<div class="tv-idle"><span>🔒</span><p><b>${esc(c.nombre)}</b> no se puede ver dentro del panel:
+      su cadena no deja incrustar su reproductor.</p><a class="tv-open" href="${esc(c.web)}" target="_blank" rel="noopener">Abrir en su web</a></div>`;
+    return;
+  }
+  if (c.embed) {
+    box.innerHTML = `<div class="tv-frame"><iframe src="${esc(c.embed)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+      allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>${bar(c.tipo === "atres" ? "Reproductor de Atresplayer: con sus anuncios" : "")}`;
+    state.tv.playing = true;
+  } else {
+    box.innerHTML = `<div class="tv-frame"><video playsinline autoplay controls></video></div>${bar("Cargando…")}`;
+    const video = box.querySelector("video");
+    const src = c.fuentes[sourceIndex];
+    const failed = () => {
+      if (state.tv.current !== id) return;
+      if (sourceIndex + 1 < c.fuentes.length) return playTV(id, sourceIndex + 1);  // la siguiente emisión del canal
+      $("tv-msg").textContent = "No se puede ver ahora mismo: la cadena no responde.";
+      state.tv.playing = false;
+    };
+    video.addEventListener("playing", () => { if ($("tv-msg")) $("tv-msg").textContent = ""; state.tv.playing = true; });
+    if (window.Hls && Hls.isSupported()) {
+      const hls = new Hls({ lowLatencyMode: false, backBufferLength: 30 });
+      state.tv.hls = hls;
+      hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) failed(); });
+      hls.loadSource(src);
+      hls.attachMedia(video);
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = src;  // Safari y el iPhone reproducen HLS sin hls.js
+      video.addEventListener("error", failed);
+    } else { failed(); return; }
+    video.play().catch(() => { /* sin sonido automático: el botón de play de los controles */ });
+  }
+  $("tv-full").addEventListener("click", () => {
+    const el = box.querySelector(".tv-frame");
+    (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el);
+  });
 }
 
 // ---------- Detalle de una cita ----------
@@ -993,6 +1085,7 @@ function render() {
     case "energia": renderEnergy(); renderHeatCost(); renderCar(); renderTrips(); break;
     case "consumo": renderConsumption(); break;
     case "tareas": renderLists(); renderMenuList(); break;
+    case "tv": if (!state.tv.current) renderTV(); break;
   }
 }
 
