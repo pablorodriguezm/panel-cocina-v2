@@ -473,7 +473,8 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .offline { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
 
   .hoy-top, .hoy-bottom, .casa, .consumo, .tareas, .tv { display: flex; flex-direction: column; height: auto; }
-  .tv-chans { display: grid; grid-template-columns: 1fr 1fr; }
+  .tv-chans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tv-chan { flex-wrap: wrap; column-gap: 6px; row-gap: 0; min-width: 0; }
   .band { flex-wrap: wrap; padding: 16px 18px; row-gap: 12px; }
   .band-weather { flex: 1 1 100%; }
   .next { padding: 16px 18px; }
