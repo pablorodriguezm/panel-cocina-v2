@@ -5,6 +5,8 @@ GET  /api/hogar           → lo común: tiempo, luz (y si calentar con gas o ai
 POST /api/recordatorios   → el Atajo del iPhone envía las listas de Recordatorios (cabecera X-Panel-Token)
 POST /api/recordatorios/recoger → el Atajo recoge lo pasado a la compra desde el panel (cabecera X-Panel-Token)
 GET  /api/menu?semana=0   → menú de la semana (0 esta, 1 la siguiente) y sus ingredientes
+GET  /api/tv              → canales de la pestaña TV
+GET  /api/tv/hls?u=…      → intermediario de vídeo para las emisiones m3u8 (solo las de la lista)
 POST /api/copias/ok       → el stack «copias» avisa de que la copia de seguridad ha terminado (X-Panel-Token)
 POST /api/menu/cambiar    → cambia la comida o la cena de un día por otro plato del mismo tipo
 POST /api/menu/compra     → pasa un ingrediente del menú a la compra (o lo quita si el Atajo aún no lo ha recogido)
@@ -26,12 +28,12 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 import asyncio
 
-from . import aire, avisos, calefaccion, calendarios, config, copias, demo, energy, house, menu, reminders, shelly, sources
+from . import aire, avisos, calefaccion, calendarios, config, copias, tv, demo, energy, house, menu, reminders, shelly, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -57,6 +59,7 @@ async def lifespan(_: FastAPI):
     state["reminders"] = reminders.Store()
     state["menu"] = menu.Store()
     state["backups"] = copias.Store()
+    state["tv"] = tv.TV(client)
     if DEMO and not state["reminders"].lists:
         state["reminders"].lists = demo.reminders()
     state["car"] = Cached("coche", 2 * 60, src.car if src else lambda: sources.car(ha))
@@ -227,6 +230,39 @@ async def push_reminders(request: Request, x_panel_token: str | None = Header(de
     unknown = [n for n in updated if n not in config.reminder_lists()]
     return {"ok": True, "actualizadas": updated,
             "aviso": f"Listas que el panel no enseña (añádelas en config.yaml): {', '.join(unknown)}" if unknown else None}
+
+
+@app.get("/api/tv")
+async def tv_channels():
+    """Los canales de la pestaña TV, con su emisión (a través del intermediario), su reproductor incrustado o su web."""
+    await state["tv"].refresh()
+    return {"canales": state["tv"].channels(), "error": state["tv"].list_error}
+
+
+@app.get("/api/tv/hls")
+async def tv_proxy(u: str):
+    """Intermediario de vídeo: solo emisiones de la lista y lo que sus m3u8 enlazan (ver app/tv.py)."""
+    if not state["tv"].permitted(u):
+        raise HTTPException(403, "Dirección no permitida")
+    try:
+        body, ctype = await state["tv"].fetch(u)
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(502, f"La cadena responde {e.response.status_code}")
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"La cadena no responde: {e.__class__.__name__}")
+    headers = {"Cache-Control": "no-store"}
+    if isinstance(body, str):
+        return Response(body, media_type=ctype, headers=headers)
+
+    async def chunks():
+        try:
+            async for part in body.aiter_bytes():
+                yield part
+        finally:
+            await body.aclose()
+    return StreamingResponse(chunks(), media_type=ctype, headers=headers)
 
 
 @app.post("/api/copias/ok")
