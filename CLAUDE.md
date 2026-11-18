@@ -52,8 +52,12 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   (`app/festivos.yaml`, hay que añadir cada año), Fórmula 1 (todas las sesiones, API Jolpica) y partidos del
   Real Madrid y del Barça (todas las competiciones, un .ics por equipo). Solo en el panel, no en el calendario de
   Apple; «Lo próximo» sigue siendo solo de «RIM Y PABLO».
+- **TV** (app/tv.py, `docs/TV.md`): canales principales dentro del panel. RTVE y TVG en m3u8 abierto (lista de
+  TDTChannels, con reserva fija) por el intermediario `/api/tv/hls`, que solo pide a los servidores de esas listas y
+  nunca a la red de casa; Antena 3 y laSexta con el reproductor de Atresplayer incrustado; La Séptima por YouTube;
+  Telecinco y Cuatro solo con enlace (Mediaset no deja incrustar). Con la tele puesta no se bloquea la pantalla.
 - **Estructura como el marco original:** barra de navegación a la derecha (avatar, Hoy, Calendario, Tiempo,
-  Casa, Energía, Consumo, Tareas, Actualizar, Dormir y la hora) con una vista por sección. Las capturas de referencia están en
+  Casa, Energía, Consumo, Tareas, TV, Actualizar, Dormir y la hora) con una vista por sección. Las capturas de referencia están en
   github.com/pablorodriguezm/panel-cocina/tree/main/docs/capturas. No volver a una sola pantalla.
 - **Estilo:** paleta y tipografía de los repos de referencia (crema `#F7EEE2`, tarjetas `#FFFDF9`, Geist,
   cabecera con el cielo según la hora). Al usuario le gustan; mantenlos. Del atardecer al amanecer pasa solo a un
