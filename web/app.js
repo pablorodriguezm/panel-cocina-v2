@@ -327,7 +327,8 @@ function playTV(id, sourceIndex = 0) {
   }
   if (c.embed) {
     box.innerHTML = `<div class="tv-frame"><iframe src="${esc(c.embed)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-      allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>${bar(c.tipo === "atres" ? "Reproductor de Atresplayer: con sus anuncios" : "")}`;
+      allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>${bar(c.tipo === "atres" && c.web
+      ? `Si dice «sin emisión», <a class="tv-link" href="${esc(c.web)}" target="_blank" rel="noopener">ábrelo en Atresplayer</a>` : "")}`;
     state.tv.playing = true;
   } else {
     box.innerHTML = `<div class="tv-frame"><video playsinline autoplay controls></video></div>${bar("Cargando…")}`;

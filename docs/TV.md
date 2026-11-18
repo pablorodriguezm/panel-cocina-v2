@@ -55,5 +55,6 @@ tv:
 |---|---|---|
 | «No se puede ver ahora mismo: la cadena no responde» | La emisión ha cambiado de dirección o está caída | Esperar a la siguiente revisión de TDTChannels (6 h) o poner `urls` en `config.yaml` |
 | RTVE no carga | La emisión está restringida a España y el servidor sale por otro país (VPN) | Que el contenedor salga por la conexión de casa |
-| Antena 3 o laSexta en negro | El bloqueador de anuncios de la red (Pi-hole) corta el reproductor, o falta aceptar las cookies | Tocar dentro del reproductor; si sigue en negro, permitir los dominios de Atresplayer en el Pi-hole |
+| Antena 3 o laSexta: «Actualmente sin emisión» al pulsar «Directo» | El navegador no deja guardar cookies al reproductor incrustado (Safari en el iPhone lo bloquea siempre) | En la tablet: Fully Kiosk → Ajustes → Web Content Settings → activar *Enable Third-Party Cookies*. En el iPhone no hay arreglo: el enlace «ábrelo en Atresplayer» de debajo del reproductor abre su web |
+| Antena 3 o laSexta en negro | El bloqueador de anuncios de la red (Pi-hole) corta el reproductor | Permitir los dominios de Atresplayer en el Pi-hole |
 | Telecinco o Cuatro | No se pueden incrustar | «Abrir en su web» las abre en el navegador de la tablet |
