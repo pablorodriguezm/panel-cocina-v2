@@ -302,6 +302,20 @@ async function loadTV() {
   if (state.tv.hasList && !state.tv.myList) loadMyList();
 }
 
+// Vuelve a pedir los canales (y «Mi lista»): tras un redespliegue o si una cadena ha cambiado de dirección
+async function refreshTV() {
+  try {
+    const r = await getJSON("/api/tv");
+    state.tv.channels = r.canales;
+    state.tv.error = r.error;
+    state.tv.hasList = !!r.mi_lista;
+  } catch (e) { console.warn(e); }
+  if (state.tv.hasList) {
+    try { state.tv.myList = await getJSON("/api/tv/iptv"); } catch (e) { console.warn(e); }
+  }
+  if (state.view === "tv") renderTV();
+}
+
 async function loadMyList() {
   try {
     state.tv.myList = await getJSON("/api/tv/iptv");
@@ -390,7 +404,7 @@ function stopTV() {
   state.tv.playing = false;
 }
 
-function playTV(id, sourceIndex = 0) {
+function playTV(id, sourceIndex = 0, retried = false) {
   const c = tvChannel(id);
   if (!c) return;
   stopTV();
@@ -415,7 +429,11 @@ function playTV(id, sourceIndex = 0) {
     const src = c.fuentes[sourceIndex];
     const failed = () => {
       if (state.tv.current !== id) return;
-      if (sourceIndex + 1 < c.fuentes.length) return playTV(id, sourceIndex + 1);  // la siguiente emisión del canal
+      if (sourceIndex + 1 < c.fuentes.length) return playTV(id, sourceIndex + 1, retried);  // la siguiente emisión
+      if (!retried) {  // una vez: con la lista de canales recién pedida
+        $("tv-msg").textContent = "Reintentando…";
+        return refreshTV().then(() => { if (state.tv.current === id) playTV(id, 0, true); });
+      }
       $("tv-msg").textContent = "No se puede ver ahora mismo: la cadena no responde.";
       state.tv.playing = false;
     };

@@ -28,8 +28,12 @@ de reserva y `/api/tv` lo dice en `error`.
 Casi ninguna cadena permite reproducir su emisión desde otra web (CORS), así que el panel la pide por la tableta y
 la reenvía. Para que no sirva para pedir cualquier otra cosa:
 
-- Solo pide a servidores que estén en la lista de canales o que esas listas m3u8 enlacen (sublistas, segmentos y
-  claves), y caducan a las 6 h.
+- Solo pide direcciones que ha dado el propio panel: las de la lista de canales y las que enlazan esas listas m3u8
+  (sublistas, segmentos y claves). Cada una va **firmada** (`?u=…&s=…`, HMAC-SHA256 con una clave aleatoria guardada
+  en `/data/tv-clave.bin`); sin firma válida, 403.
+- Como la clave está en `/data`, los enlaces siguen valiendo tras un redespliegue: la tele no se corta al
+  actualizar el contenedor. Si aun así un canal falla con todas sus direcciones, la pestaña vuelve a pedir la lista
+  de canales una vez y lo reintenta antes de dar el aviso.
 - Nunca a direcciones de la red de casa ni de la propia máquina (se comprueba la IP de cada nombre).
 - Las redirecciones se siguen a mano y se comprueba cada salto.
 
@@ -61,7 +65,8 @@ esas variables, todo sigue como antes.
   primeros que encajan; con más, hay que afinar la búsqueda. Recuerda la pestaña, el grupo y el último canal.
 - Se ve en HLS (`/live/usuario/clave/<id>.m3u8`) a través del intermediario.
 - **La clave no sale del servidor:** la tablet solo recibe el número de cada canal. Las direcciones que llevan la
-  clave (la emisión y, en muchos servidores, cada segmento) se cambian por fichas opacas (`/api/tv/hls?k=…`). Los
+  clave (la emisión y, en muchos servidores, cada segmento) van **cifradas** (`/api/tv/hls?k=…`, con la misma clave de
+  `/data`; no se pueden leer ni retocar, y también sobreviven a un reinicio). Los
   errores se guardan sin usuario ni clave, y httpx ya no apunta las direcciones que pide en el registro del contenedor.
 - Los logos solo salen si son https (una página https no puede enseñar imágenes http).
 - Cuenta como una conexión de tu suscripción mientras se ve. Muchas solo permiten una a la vez.
