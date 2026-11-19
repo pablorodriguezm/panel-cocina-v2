@@ -8,7 +8,8 @@ const ES = "es-ES";
 const CAL_NAME = "Rim y Pablo";
 
 const state = {
-  tv: { channels: null, current: null, playing: false, hls: null, error: null },
+  tv: { channels: null, current: null, playing: false, hls: null, error: null,
+        hasList: false, myList: null, tab: null, q: "", group: "" },
   users: [], user: null, view: "hoy", home: null, house: null, power: null, trips: {}, list: null, weatherDay: null,
   pending: {}, busy: null, houseError: null,
   menu: [], menuWeek: 0, menuBusy: null,  // menú de esta semana y de la siguiente
@@ -273,7 +274,16 @@ function resetIdle() {
 
 // ---------- TV ----------
 
-function tvSaved() { try { return localStorage.getItem("tv-canal"); } catch { return null; } }
+function tvPref(key, value) {
+  try {
+    if (value === undefined) return localStorage.getItem(key);
+    localStorage.setItem(key, value);
+  } catch { /* sin almacenamiento */ }
+  return null;
+}
+function tvSaved() { return tvPref("tv-canal"); }
+const TV_MAX_RESULTS = 150;  // las listas IPTV traen miles: se enseñan los primeros y se afina buscando
+const tvNorm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 async function loadTV() {
   if (!state.tv.channels) {
@@ -281,24 +291,94 @@ async function loadTV() {
       const r = await getJSON("/api/tv");
       state.tv.channels = r.canales;
       state.tv.error = r.error;
+      state.tv.hasList = !!r.mi_lista;
     } catch (e) { console.warn(e); state.tv.error = "No se pudo cargar la lista de canales."; }
   }
+  if (state.tv.tab === null) {
+    state.tv.tab = tvPref("tv-tab") === "lista" ? "lista" : "abiertos";
+    state.tv.group = tvPref("tv-grupo") || "";
+  }
   renderTV();
+  if (state.tv.hasList && !state.tv.myList) loadMyList();
+}
+
+async function loadMyList() {
+  try {
+    state.tv.myList = await getJSON("/api/tv/iptv");
+  } catch (e) {
+    console.warn(e);
+    state.tv.myList = { grupos: [], canales: [], error: "No se pudo cargar «Mi lista»." };
+  }
+  if (state.view === "tv") renderTV();
+}
+
+// Un canal por su id: los abiertos de /api/tv o, con «iptv:<n>», uno de «Mi lista»
+function tvChannel(id) {
+  if (String(id).startsWith("iptv:")) {
+    const sid = Number(String(id).slice(5));
+    const s = (state.tv.myList?.canales || []).find((c) => c.id === sid);
+    return s && { id, nombre: s.n, tipo: "hls", fuentes: [`/api/tv/iptv/${sid}`] };
+  }
+  return (state.tv.channels || []).find((c) => c.id === id);
 }
 
 function renderTV() {
   const chans = state.tv.channels || [];
+  const tab = state.tv.hasList ? state.tv.tab : "abiertos";
   const kind = { hls: "", atres: "Atresplayer", youtube: "YouTube", web: "Solo en su web" };
-  $("tv-list").innerHTML = head("📺", "Canales", "#3F7FD9") + (chans.length
-    ? `<div class="scroll tv-chans">${chans.map((c) => `<button class="tv-chan${state.tv.current === c.id ? " on" : ""}${c.tipo === "web" ? " ext" : ""}" data-tv="${esc(c.id)}">
-        <b>${esc(c.nombre)}</b>${kind[c.tipo] ? `<small>${kind[c.tipo]}</small>` : ""}</button>`).join("")}</div>`
-    : `<p class="empty">${esc(state.tv.error || "Cargando…")}</p>`);
-  $("tv-list").querySelectorAll("[data-tv]").forEach((b) => b.addEventListener("click", () => playTV(b.dataset.tv)));
+  const tabs = state.tv.hasList ? `<div class="tv-tabs">${[["abiertos", "Abiertos"], ["lista", "Mi lista"]].map(([k, l]) =>
+    `<button data-tvtab="${k}" class="${tab === k ? "on" : ""}">${l}</button>`).join("")}</div>` : "";
+  let body;
+  if (tab === "lista") {
+    const list = state.tv.myList;
+    const groups = (list?.grupos || []).filter((g) => list.canales.some((c) => c.g === g.id));
+    body = list && list.canales.length
+      ? `<div class="tv-find"><input type="search" id="tv-q" placeholder="Buscar canal" value="${esc(state.tv.q)}" autocomplete="off">
+          <select id="tv-group"><option value="">Todos los grupos</option>${groups.map((g) =>
+            `<option value="${esc(g.id)}"${state.tv.group === g.id ? " selected" : ""}>${esc(g.nombre)}</option>`).join("")}</select></div>
+         <div class="scroll tv-chans" id="tv-results"></div>`
+      : `<p class="empty">${esc(list?.error || (list ? "La lista no trae canales en directo." : "Cargando «Mi lista»…"))}</p>`;
+  } else {
+    body = chans.length
+      ? `<div class="scroll tv-chans">${chans.map((c) => `<button class="tv-chan${state.tv.current === c.id ? " on" : ""}${c.tipo === "web" ? " ext" : ""}" data-tv="${esc(c.id)}">
+          <b>${esc(c.nombre)}</b>${kind[c.tipo] ? `<small>${kind[c.tipo]}</small>` : ""}</button>`).join("")}</div>`
+      : `<p class="empty">${esc(state.tv.error || "Cargando…")}</p>`;
+  }
+  $("tv-list").innerHTML = head("📺", "Canales", "#3F7FD9") + tabs + body;
+  $("tv-list").querySelectorAll("[data-tvtab]").forEach((b) => b.addEventListener("click", () => {
+    state.tv.tab = b.dataset.tvtab;
+    tvPref("tv-tab", state.tv.tab);
+    renderTV();
+  }));
+  $("tv-list").querySelectorAll(".tv-chans:not(#tv-results) [data-tv]").forEach((b) => b.addEventListener("click", () => playTV(b.dataset.tv)));
+  if ($("tv-results")) {
+    $("tv-q").addEventListener("input", (e) => { state.tv.q = e.target.value; renderTVResults(); });
+    $("tv-group").addEventListener("change", (e) => { state.tv.group = e.target.value; tvPref("tv-grupo", state.tv.group); renderTVResults(); });
+    renderTVResults();
+  }
   if (!state.tv.current) {
-    const saved = chans.find((c) => c.id === tvSaved() && c.tipo !== "web");
-    if (saved) return playTV(saved.id);
+    const saved = tvSaved() && tvChannel(tvSaved());
+    if (saved && saved.tipo !== "web") return playTV(saved.id);
     $("tv-screen").innerHTML = `<div class="tv-idle"><span>📺</span><p>Elige un canal</p></div>`;
   }
+}
+
+// Solo la lista de resultados: así el buscador no pierde el foco mientras se escribe
+function renderTVResults() {
+  const list = state.tv.myList;
+  if (!list || !$("tv-results")) return;
+  const words = tvNorm(state.tv.q).split(/\s+/).filter(Boolean);
+  const found = list.canales.filter((c) => (!state.tv.group || c.g === state.tv.group)
+    && words.every((w) => tvNorm(c.n).includes(w)));
+  const shown = found.slice(0, TV_MAX_RESULTS);
+  $("tv-results").innerHTML = shown.map((c) => {
+    const id = `iptv:${c.id}`;
+    return `<button class="tv-chan${state.tv.current === id ? " on" : ""}" data-tv="${id}">
+      ${c.logo ? `<img class="tv-logo" src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<b>${esc(c.n)}</b></button>`;
+  }).join("") + (found.length > shown.length
+    ? `<p class="empty tv-more">y ${found.length - shown.length} más: busca para afinar</p>`
+    : found.length ? "" : `<p class="empty">Ningún canal con ese nombre.</p>`);
+  $("tv-results").querySelectorAll("[data-tv]").forEach((b) => b.addEventListener("click", () => playTV(b.dataset.tv)));
 }
 
 function stopTV() {
@@ -311,7 +391,7 @@ function stopTV() {
 }
 
 function playTV(id, sourceIndex = 0) {
-  const c = (state.tv.channels || []).find((x) => x.id === id);
+  const c = tvChannel(id);
   if (!c) return;
   stopTV();
   state.tv.current = id;

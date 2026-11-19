@@ -367,6 +367,15 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .tv-open { display: inline-block; padding: 10px 18px; border-radius: 999px; font-weight: 600; text-decoration: none;
   color: #3F7FD9; background: color-mix(in srgb, #3F7FD9 13%, transparent); }
 .tv-chans { display: flex; flex-direction: column; gap: 6px; }
+.tv-tabs { display: flex; gap: 4px; padding: 3px; margin-bottom: 10px; border-radius: 12px; background: var(--highlight); }
+.tv-tabs button { flex: 1; padding: 8px 0; border-radius: 9px; font-weight: 600; font-size: 14px; color: var(--ink-soft); }
+.tv-tabs button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.tv-find { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.tv-find input, .tv-find select { width: 100%; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink); font: inherit; font-size: 15px; -webkit-user-select: text; user-select: text; }
+.tv-logo { width: 26px; height: 26px; object-fit: contain; flex: none; align-self: center; border-radius: 6px; }
+.tv-chans#tv-results .tv-chan { justify-content: flex-start; align-items: center; }
+.tv-more { text-align: center; font-size: 13px; }
 .tv-chan { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; text-align: left; padding: 12px 14px;
   border-radius: 14px; background: var(--highlight); }
 .tv-chan b { font-size: 17px; font-weight: 600; }
