@@ -285,13 +285,19 @@ async def tv_proxy(u: str | None = None, s: str | None = None, k: str | None = N
 
 
 async def _tv_send(u: str):
+    log = logging.getLogger("panel.tv")
+    where = state["tv"].redact(u)[:200]  # sin la clave de la lista IPTV
     try:
         body, ctype = await state["tv"].fetch(u)
     except PermissionError as e:
+        log.warning("TV: %s → %s", where, e)
         raise HTTPException(403, str(e))
     except httpx.HTTPStatusError as e:
+        final = state["tv"].redact(str(e.request.url))[:200]
+        log.warning("TV: %s → la cadena responde %s (%s)", where, e.response.status_code, final)
         raise HTTPException(502, f"La cadena responde {e.response.status_code}")
     except httpx.HTTPError as e:
+        log.warning("TV: %s → la cadena no responde: %s %s", where, e.__class__.__name__, state["tv"].redact(str(e))[:200])
         raise HTTPException(502, f"La cadena no responde: {e.__class__.__name__}")
     headers = {"Cache-Control": "no-store"}
     if isinstance(body, str):

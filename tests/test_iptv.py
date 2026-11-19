@@ -153,3 +153,21 @@ def test_endpoints(tmp_path, monkeypatch):
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
+
+
+@pytest.mark.anyio
+async def test_proxy_errors_are_logged_without_the_password(caplog, monkeypatch):
+    from app import main
+    def handler(request):
+        if request.url.path == "/player_api.php":
+            return api_routes(request)
+        return httpx.Response(403)
+    t, lista = make(handler)
+    await lista.refresh()
+    monkeypatch.setitem(main.state, "tv", t)
+    with caplog.at_level("WARNING", logger="panel.tv"), pytest.raises(main.HTTPException) as e:
+        await main._tv_send(lista.stream_url(101))
+    assert e.value.status_code == 502
+    text = caplog.text
+    assert "responde 403" in text and "iptv.example" in text
+    assert PASS not in text and QPASS not in text and "s3cr" not in text

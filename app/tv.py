@@ -210,6 +210,12 @@ class TV:
             return None
         return data.decode("utf-8", "replace")
 
+    def redact(self, text: str) -> str:
+        """`text` sin ningún secreto (para el registro)."""
+        for s in sorted(self.secrets, key=len, reverse=True):
+            text = text.replace(s, "***")
+        return text
+
     def public(self, url: str) -> bool:
         """http(s) y fuera de la red de casa."""
         parts = urlsplit(url)
