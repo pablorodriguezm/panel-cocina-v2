@@ -12,7 +12,7 @@ instalar nada más.
 | La Séptima | Directo de su canal de YouTube incrustado | |
 | Telecinco, Cuatro | Botón «Abrir en su web» | Mediaset no deja incrustar su reproductor |
 
-Tocar un canal lo pone; el botón de la esquina lo pasa a pantalla completa. El panel recuerda el último canal y lo
+Tocar un canal lo pone; la pantalla completa es la del propio reproductor. El panel recuerda el último canal y lo
 vuelve a poner al entrar en la pestaña. Con la tele puesta **no se bloquea** a los 2 minutos; al salir de la pestaña
 la emisión se para.
 
