@@ -37,6 +37,8 @@ from . import aire, avisos, calefaccion, calendarios, config, copias, tv, demo, 
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# httpx apunta cada dirección que pide, con su token o clave dentro (Shelly, IPTV): fuera del registro
+logging.getLogger("httpx").setLevel(logging.WARNING)
 WEB = Path(__file__).resolve().parent.parent / "web"
 
 DEMO = os.environ.get("PANEL_DEMO", "").lower() in {"1", "true", "si", "sí"}
