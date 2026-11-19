@@ -11,14 +11,18 @@ Cada canal es de uno de estos tipos:
 
 El intermediario (`/api/tv/hls`) solo pide direcciones de las emisiones de la lista y de lo que esas listas m3u8
 enlazan (otras listas, segmentos y claves), y nunca a la red de casa: no sirve para pedir cualquier otra cosa.
+Las direcciones que llevan un secreto (la clave de la lista IPTV, app/iptv.py) no se mandan a la tablet: van como una
+ficha opaca (`/api/tv/hls?k=…`) que solo este proceso sabe traducir.
 """
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import re
 import socket
 import time
-from urllib.parse import quote, urljoin, urlsplit
+from collections import OrderedDict
+from urllib.parse import quote, quote_plus, urljoin, urlsplit
 
 import httpx
 
@@ -29,6 +33,7 @@ TIMEOUT = httpx.Timeout(15.0, connect=5.0)
 USER_AGENT = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
 LIST_MAX_AGE_S = 6 * 3600
 HOST_TTL_S = 6 * 3600
+HIDDEN_MAX = 4000  # direcciones con secreto que se recuerdan (las de los segmentos van cambiando)
 
 # Los canales por defecto. «tdt»: nombre exacto en TDTChannels; «reserva»: la dirección si la lista no responde.
 CANALES = [
@@ -99,6 +104,8 @@ class TV:
         self.fetched_at = 0.0
         self.list_error: str | None = None
         self.allowed: dict[str, float] = {}  # host → hasta cuándo se le puede pedir
+        self.secrets: list[str] = []
+        self.hidden: OrderedDict[str, str] = OrderedDict()  # ficha → dirección con secreto
 
     async def refresh(self) -> None:
         if time.time() - self.fetched_at < LIST_MAX_AGE_S and self.streams:
@@ -140,6 +147,26 @@ class TV:
             out.append(item)
         return out
 
+    def hide(self, secret: str) -> None:
+        """Las direcciones que lleven `secret` (tal cual o codificado) no llegan nunca a la tablet."""
+        for form in {secret, quote(secret, safe=""), quote_plus(secret)}:
+            if form and form not in self.secrets:
+                self.secrets.append(form)
+
+    def link(self, url: str) -> str:
+        """La dirección del intermediario para `url`: la normal o, si lleva un secreto, una ficha opaca."""
+        if not any(s in url for s in self.secrets):
+            return proxied(url)
+        key = hashlib.sha256(url.encode()).hexdigest()[:32]
+        self.hidden[key] = url
+        self.hidden.move_to_end(key)
+        while len(self.hidden) > HIDDEN_MAX:
+            self.hidden.popitem(last=False)
+        return "/api/tv/hls?k=" + key
+
+    def unhide(self, key: str) -> str | None:
+        return self.hidden.get(key)
+
     def allow(self, url: str) -> None:
         host = urlsplit(url).hostname
         if host:
@@ -176,7 +203,7 @@ class TV:
             body = (await r.aread()).decode("utf-8", "replace")
             await r.aclose()
             self.allow(final)
-            return rewrite(body, final, self.allow), "application/vnd.apple.mpegurl"
+            return rewrite(body, final, self.allow, self.link), "application/vnd.apple.mpegurl"
         return r, ctype or "application/octet-stream"
 
 
@@ -191,7 +218,7 @@ def proxied(url: str) -> str:
 URI_ATTR = re.compile(r'URI="([^"]+)"')
 
 
-def rewrite(playlist: str, base: str, allow) -> str:
+def rewrite(playlist: str, base: str, allow, link=proxied) -> str:
     """Cambia cada dirección de la lista (líneas de segmentos o sublistas, y URI="…" de claves, mapas y pistas) por la
     del intermediario, ya absoluta, y la permite."""
     out = []
@@ -200,12 +227,12 @@ def rewrite(playlist: str, base: str, allow) -> str:
         if s and not s.startswith("#"):
             absolute = urljoin(base, s)
             allow(absolute)
-            out.append(proxied(absolute))
+            out.append(link(absolute))
         elif s.startswith("#") and 'URI="' in s:
             def sub(m):
                 absolute = urljoin(base, m.group(1))
                 allow(absolute)
-                return f'URI="{proxied(absolute)}"'
+                return f'URI="{link(absolute)}"'
             out.append(URI_ATTR.sub(sub, line))
         else:
             out.append(line)
