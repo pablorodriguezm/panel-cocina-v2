@@ -42,7 +42,7 @@ def test_channels_use_the_list_with_fallback_and_each_kind():
     t = tv.TV(httpx.AsyncClient(), check_public=lambda h: True, key=KEY)
     t.streams = tv.parse_tdtchannels(MD)
     chans = {c["id"]: c for c in t.channels()}
-    assert list(chans)[:4] == ["la1", "la2", "antena3", "lasexta"]
+    assert list(chans) == [c["id"] for c in tv.CANALES]  # el orden de CANALES, sea cual sea
     assert chans["la1"]["fuentes"][0] == t.link("https://rtve.example/la1/main.m3u8")
     assert chans["la1"]["fuentes"][-1] == t.link(tv.CANALES[0]["reserva"])  # la de reserva, al final
     assert chans["la2"]["fuentes"] == [t.link(tv.CANALES[1]["reserva"])]   # no está en la lista: solo la reserva
