@@ -28,8 +28,12 @@ de reserva y `/api/tv` lo dice en `error`.
 Casi ninguna cadena permite reproducir su emisión desde otra web (CORS), así que el panel la pide por la tableta y
 la reenvía. Para que no sirva para pedir cualquier otra cosa:
 
-- Solo pide a servidores que estén en la lista de canales o que esas listas m3u8 enlacen (sublistas, segmentos y
-  claves), y caducan a las 6 h.
+- Solo pide direcciones que ha dado el propio panel: las de la lista de canales y las que enlazan esas listas m3u8
+  (sublistas, segmentos y claves). Cada una va **firmada** (`?u=…&s=…`, HMAC-SHA256 con una clave aleatoria guardada
+  en `/data/tv-clave.bin`); sin firma válida, 403.
+- Como la clave está en `/data`, los enlaces siguen valiendo tras un redespliegue: la tele no se corta al
+  actualizar el contenedor. Si aun así un canal falla con todas sus direcciones, la pestaña vuelve a pedir la lista
+  de canales una vez y lo reintenta antes de dar el aviso.
 - Nunca a direcciones de la red de casa ni de la propia máquina (se comprueba la IP de cada nombre).
 - Las redirecciones se siguen a mano y se comprueba cada salto.
 
@@ -49,6 +53,26 @@ tv:
 
 `tdt` es el nombre exacto del canal en TDTChannels; `urls` fija las direcciones sin usar la lista.
 
+## Mi lista (IPTV privada)
+
+Si en el stack de Portainer están `IPTV_SERVIDOR` (`http://servidor:puerto`), `IPTV_USUARIO` e `IPTV_CLAVE` (copia
+en Bitwarden → ZIMA_OS), la lista de canales tiene dos pestañas: **Abiertos** (los de arriba) y **Mi lista**. Sin
+esas variables, todo sigue como antes.
+
+- El panel usa la API de Xtream Codes (`player_api.php`) cada 6 h (cada 10 min si falla): grupos y canales **en
+  directo**, sin películas ni series.
+- «Mi lista» tiene buscador (sin tildes ni mayúsculas, todas las palabras) y un selector de grupo. Enseña los 150
+  primeros que encajan; con más, hay que afinar la búsqueda. Recuerda la pestaña, el grupo y el último canal.
+- Se ve en HLS (`/live/usuario/clave/<id>.m3u8`) a través del intermediario.
+- **La clave no sale del servidor:** la tablet solo recibe el número de cada canal. Las direcciones que llevan la
+  clave (la emisión y, en muchos servidores, cada segmento) van **cifradas** (`/api/tv/hls?k=…`, con la misma clave de
+  `/data`; no se pueden leer ni retocar, y también sobreviven a un reinicio). Los
+  errores se guardan sin usuario ni clave, y httpx ya no apunta las direcciones que pide en el registro del contenedor.
+- Los logos solo salen si son https (una página https no puede enseñar imágenes http).
+- Cuenta como una conexión de tu suscripción mientras se ve. Muchas solo permiten una a la vez.
+- `/api/salud` → `tv_mi_lista` dice cuántos canales hay, el último error, el estado de la cuenta y cuándo caduca. Si
+  falla o caduca en 10 días o menos, sale en **Avisos**.
+
 ## Si algo no se ve
 
 | Síntoma | Causa probable | Qué hacer |
@@ -56,5 +80,9 @@ tv:
 | «No se puede ver ahora mismo: la cadena no responde» | La emisión ha cambiado de dirección o está caída | Esperar a la siguiente revisión de TDTChannels (6 h) o poner `urls` en `config.yaml` |
 | RTVE no carga | La emisión está restringida a España y el servidor sale por otro país (VPN) | Que el contenedor salga por la conexión de casa |
 | Antena 3 o laSexta: «Actualmente sin emisión» al pulsar «Directo» | El navegador no deja guardar cookies al reproductor incrustado (Safari en el iPhone lo bloquea siempre) | En la tablet: Fully Kiosk → Ajustes → Web Content Settings → activar *Enable Third-Party Cookies*. En el iPhone no hay arreglo: el enlace «ábrelo en Atresplayer» de debajo del reproductor abre su web |
+| Antena 3 o laSexta: «sin emisión» con el panel abierto por `http://192.168.1.34:8090` | Su directo va protegido (DRM) y el navegador solo lo reproduce dentro de una página https | Abrir el panel por `https://panel.pablorodriguezm.es` (proxy inverso del Synology, solo red de casa) |
+| «Mi lista» no aparece | Falta alguna de las tres variables `IPTV_…` | Ponerlas en Portainer y actualizar el stack |
+| «Mi lista: el servidor no acepta el usuario o la clave» | Datos mal copiados o cuenta caducada | Revisar las variables; `/api/salud` → `tv_mi_lista` |
+| Un canal de «Mi lista» no arranca | El servidor no da HLS para ese canal, o ya hay otra conexión abierta con tu cuenta | Cerrar la otra app; si solo da `.ts`, avisar para añadir mpegts.js |
 | Antena 3 o laSexta en negro | El bloqueador de anuncios de la red (Pi-hole) corta el reproductor | Permitir los dominios de Atresplayer en el Pi-hole |
 | Telecinco o Cuatro | No se pueden incrustar | «Abrir en su web» las abre en el navegador de la tablet |

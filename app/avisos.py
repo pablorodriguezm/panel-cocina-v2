@@ -11,12 +11,13 @@ from . import calefaccion, calendarios, config
 
 NOMBRES = {"weather": "el tiempo", "prices": "el precio de la luz", "calendar": "el calendario"}
 LISTA_SIN_LLEGAR_S = 24 * 3600
+IPTV_CADUCA_DIAS = 10
 
 
 def build(now: datetime, *, sources: dict[str, dict], extra: dict[str, dict], lists: list[dict], shelly: dict,
-          backups: dict | None = None) -> list[dict]:
+          backups: dict | None = None, iptv: dict | None = None) -> list[dict]:
     """`sources`: bloques de caché por clave; `extra`: fuentes de los calendarios extra; `lists`: las de
-    Recordatorios; `shelly`: el estado del envío de la tarifa."""
+    Recordatorios; `shelly`: el estado del envío de la tarifa; `iptv`: el de «Mi lista» de la pestaña TV."""
     out = []
     gas = calefaccion.stale_gas_price(now.date())
     if gas:
@@ -37,4 +38,12 @@ def build(now: datetime, *, sources: dict[str, dict], extra: dict[str, dict], li
         out.append({"id": "shelly", "texto": f"No se envía el precio a Shelly: {shelly['error'].splitlines()[0]}"})
     if backups and not backups["ok"]:
         out.append({"id": "copias", "texto": f"{backups['error']}. Mira el stack «copias» en Portainer."})
+    if iptv and iptv.get("configurada"):
+        if iptv.get("error"):
+            out.append({"id": "iptv", "texto": f"TV: {iptv['error']}"})
+        elif iptv.get("caduca"):
+            dias = (datetime.fromisoformat(iptv["caduca"]).date() - now.date()).days
+            if dias <= IPTV_CADUCA_DIAS:
+                cuando = "ha caducado" if dias < 0 else "caduca hoy" if dias == 0 else f"caduca en {dias} día{'s' if dias != 1 else ''}"
+                out.append({"id": "iptv", "texto": f"TV: la suscripción de «Mi lista» {cuando} ({iptv['caduca']})."})
     return out

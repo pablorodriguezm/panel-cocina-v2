@@ -56,6 +56,9 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   TDTChannels, con reserva fija) por el intermediario `/api/tv/hls`, que solo pide a los servidores de esas listas y
   nunca a la red de casa; Antena 3 y laSexta con el reproductor de Atresplayer incrustado; La Séptima por YouTube;
   Telecinco y Cuatro solo con enlace (Mediaset no deja incrustar). Con la tele puesta no se bloquea la pantalla.
+  «Mi lista» (app/iptv.py): la lista IPTV privada (Xtream: servidor, usuario y clave en variables de Portainer), solo
+  canales en directo, con buscador y grupos. La clave nunca sale del servidor: la tablet recibe ids y fichas opacas.
+  Para Antena 3 y laSexta (DRM) el panel se abre por https (proxy inverso del Synology, solo red de casa).
 - **Estructura como el marco original:** barra de navegación a la derecha (avatar, Hoy, Calendario, TV, Tiempo,
   Casa, Energía, Consumo, Tareas, Actualizar, Dormir y la hora) con una vista por sección. Las capturas de referencia están en
   github.com/pablorodriguezm/panel-cocina/tree/main/docs/capturas. No volver a una sola pantalla.
@@ -72,7 +75,8 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   No toques a mano la línea `image:` de ese fichero.
 - Despliegue real: ZimaOS en 192.168.1.34 (Portainer :9000, panel :8090), Home Assistant en 192.168.1.202.
   La configuración vive en el servidor en /DATA/AppData/panel-cocina/config/config.yaml.
-- Secretos solo en variables de Portainer o `.env` (ignorado): `HA_TOKEN`, `PANEL_TOKEN`, `SHELLY_TARIFA_URL` y,
+- Secretos solo en variables de Portainer o `.env` (ignorado): `HA_TOKEN`, `PANEL_TOKEN`, `SHELLY_TARIFA_URL`,
+  `IPTV_SERVIDOR`, `IPTV_USUARIO`, `IPTV_CLAVE` y,
   en el stack de copias, `SMB_USER` y `SMB_PASSWORD`
   (copia en Bitwarden → ZIMA_OS). `config/config.yaml`
   tampoco se sube.

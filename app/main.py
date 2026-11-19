@@ -6,7 +6,9 @@ POST /api/recordatorios   → el Atajo del iPhone envía las listas de Recordato
 POST /api/recordatorios/recoger → el Atajo recoge lo pasado a la compra desde el panel (cabecera X-Panel-Token)
 GET  /api/menu?semana=0   → menú de la semana (0 esta, 1 la siguiente) y sus ingredientes
 GET  /api/tv              → canales de la pestaña TV
-GET  /api/tv/hls?u=…      → intermediario de vídeo para las emisiones m3u8 (solo las de la lista)
+GET  /api/tv/hls?u=…&s=…  → intermediario de vídeo: solo direcciones firmadas por el panel (?k=… si llevan la clave IPTV)
+GET  /api/tv/iptv         → «Mi lista»: grupos y canales en directo de la lista IPTV privada
+GET  /api/tv/iptv/{id}    → la emisión de un canal de «Mi lista» (sin que su dirección con la clave salga de aquí)
 POST /api/copias/ok       → el stack «copias» avisa de que la copia de seguridad ha terminado (X-Panel-Token)
 POST /api/menu/cambiar    → cambia la comida o la cena de un día por otro plato del mismo tipo
 POST /api/menu/compra     → pasa un ingrediente del menú a la compra (o lo quita si el Atajo aún no lo ha recogido)
@@ -33,10 +35,12 @@ from fastapi.staticfiles import StaticFiles
 
 import asyncio
 
-from . import aire, avisos, calefaccion, calendarios, config, copias, tv, demo, energy, house, menu, reminders, shelly, sources
+from . import aire, avisos, calefaccion, calendarios, config, copias, iptv, tv, demo, energy, house, menu, reminders, shelly, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# httpx apunta cada dirección que pide, con su token o clave dentro (Shelly, IPTV): fuera del registro
+logging.getLogger("httpx").setLevel(logging.WARNING)
 WEB = Path(__file__).resolve().parent.parent / "web"
 
 DEMO = os.environ.get("PANEL_DEMO", "").lower() in {"1", "true", "si", "sí"}
@@ -60,6 +64,7 @@ async def lifespan(_: FastAPI):
     state["menu"] = menu.Store()
     state["backups"] = copias.Store()
     state["tv"] = tv.TV(client)
+    state["iptv"] = iptv.IPTV(client, state["tv"])
     if DEMO and not state["reminders"].lists:
         state["reminders"].lists = demo.reminders()
     state["car"] = Cached("coche", 2 * 60, src.car if src else lambda: sources.car(ha))
@@ -151,7 +156,8 @@ async def _alerts() -> list[dict]:
                         sources={k: await state[k].get() for k in avisos.NOMBRES},
                         extra=(await state["extra"].get())["fuentes"],
                         lists=state["reminders"].view(config.reminder_lists()),
-                        shelly=state["shelly"].status, backups=state["backups"].status())
+                        shelly=state["shelly"].status, backups=state["backups"].status(),
+                        iptv=state["iptv"].status())
 
 
 @app.get("/api/usuario/{user_id}")
@@ -209,6 +215,7 @@ async def health():
     out["precio_gas"] = {"ok": gas_warning is None, "error": gas_warning}
     out["shelly_tarifa"] = state["shelly"].status
     out["copias"] = state["backups"].status()
+    out["tv_mi_lista"] = state["iptv"].status()
     out["avisos"] = await _alerts()
     return out
 
@@ -236,14 +243,48 @@ async def push_reminders(request: Request, x_panel_token: str | None = Header(de
 async def tv_channels():
     """Los canales de la pestaña TV, con su emisión (a través del intermediario), su reproductor incrustado o su web."""
     await state["tv"].refresh()
-    return {"canales": state["tv"].channels(), "error": state["tv"].list_error}
+    return {"canales": state["tv"].channels(), "error": state["tv"].list_error, "mi_lista": state["iptv"].configured}
+
+
+@app.get("/api/tv/iptv")
+async def tv_my_list():
+    """«Mi lista»: grupos y canales en directo de la lista IPTV privada (sin sus direcciones)."""
+    if not state["iptv"].configured:
+        raise HTTPException(404, "Sin lista IPTV: faltan IPTV_SERVIDOR, IPTV_USUARIO e IPTV_CLAVE")
+    await state["iptv"].refresh()
+    return state["iptv"].listing()
+
+
+@app.get("/api/tv/iptv/{stream_id}")
+async def tv_my_list_stream(stream_id: int):
+    """La emisión de un canal de «Mi lista», a través del intermediario."""
+    url = state["iptv"].stream_url(stream_id)
+    if not url:
+        raise HTTPException(404, "Canal desconocido")
+    if not state["tv"].public(url):  # el servidor de la lista tampoco puede estar en la red de casa
+        raise HTTPException(403, "Dirección no permitida")
+    return await _tv_send(url)
 
 
 @app.get("/api/tv/hls")
-async def tv_proxy(u: str):
-    """Intermediario de vídeo: solo emisiones de la lista y lo que sus m3u8 enlazan (ver app/tv.py)."""
-    if not state["tv"].permitted(u):
-        raise HTTPException(403, "Dirección no permitida")
+async def tv_proxy(u: str | None = None, s: str | None = None, k: str | None = None):
+    """Intermediario de vídeo: solo direcciones que ha dado el propio panel (firmadas o cifradas, ver app/tv.py)."""
+    if k:
+        url = state["tv"].unhide(k)
+        if not url:
+            raise HTTPException(403, "Dirección no válida")
+        if not state["tv"].public(url):
+            raise HTTPException(403, "Dirección no permitida")
+    elif u:
+        url = u
+        if not state["tv"].permitted(url, s):
+            raise HTTPException(403, "Dirección no permitida")
+    else:
+        raise HTTPException(400, "Falta la dirección")
+    return await _tv_send(url)
+
+
+async def _tv_send(u: str):
     try:
         body, ctype = await state["tv"].fetch(u)
     except PermissionError as e:

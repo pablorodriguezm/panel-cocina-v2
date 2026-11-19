@@ -10,15 +10,23 @@ Cada canal es de uno de estos tipos:
 - web: Mediaset prohíbe incrustar su reproductor; solo un botón para abrir su web.
 
 El intermediario (`/api/tv/hls`) solo pide direcciones de las emisiones de la lista y de lo que esas listas m3u8
-enlazan (otras listas, segmentos y claves), y nunca a la red de casa: no sirve para pedir cualquier otra cosa.
+enlazan (otras listas, segmentos y claves), y nunca a la red de casa: no sirve para pedir cualquier otra cosa. Cada
+dirección que da el panel va firmada (`?u=…&s=…`, HMAC con una clave guardada en /data), así que sigue valiendo tras
+un reinicio del contenedor y nadie puede fabricar otra. Las que llevan un secreto (la clave de la lista IPTV,
+app/iptv.py) no se mandan a la tablet ni firmadas: van cifradas (`?k=…`) con esa misma clave.
 """
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import ipaddress
+import os
 import re
 import socket
 import time
-from urllib.parse import quote, urljoin, urlsplit
+from pathlib import Path
+from urllib.parse import quote, quote_plus, urljoin, urlsplit
 
 import httpx
 
@@ -28,7 +36,7 @@ TDTCHANNELS = "https://raw.githubusercontent.com/LaQuay/TDTChannels/master/TELEV
 TIMEOUT = httpx.Timeout(15.0, connect=5.0)
 USER_AGENT = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
 LIST_MAX_AGE_S = 6 * 3600
-HOST_TTL_S = 6 * 3600
+KEY_PATH = Path(os.environ.get("PANEL_DATA", "/data")) / "tv-clave.bin"
 
 # Los canales por defecto. «tdt»: nombre exacto en TDTChannels; «reserva»: la dirección si la lista no responde.
 CANALES = [
@@ -91,14 +99,34 @@ def _is_public(host: str) -> bool:
     return True
 
 
+def load_key(path: Path | None = None) -> bytes:
+    """La clave de las firmas, guardada en /data para que las direcciones sigan valiendo tras un reinicio."""
+    path = path or KEY_PATH
+    try:
+        key = path.read_bytes()
+        if len(key) >= 32:
+            return key
+    except OSError:
+        pass
+    key = os.urandom(32)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(key)
+        path.chmod(0o600)
+    except OSError:
+        pass  # sin /data (pruebas, desarrollo): vale hasta reiniciar
+    return key
+
+
 class TV:
-    def __init__(self, client: httpx.AsyncClient, *, check_public=_is_public):
+    def __init__(self, client: httpx.AsyncClient, *, check_public=_is_public, key: bytes | None = None):
         self.client = client
         self.check_public = check_public
+        self.key = key or load_key()
         self.streams: dict[str, list[str]] = {}
         self.fetched_at = 0.0
         self.list_error: str | None = None
-        self.allowed: dict[str, float] = {}  # host → hasta cuándo se le puede pedir
+        self.secrets: list[str] = []
 
     async def refresh(self) -> None:
         if time.time() - self.fetched_at < LIST_MAX_AGE_S and self.streams:
@@ -125,9 +153,7 @@ class TV:
                     urls.append(c["reserva"])
                 if not urls:
                     continue
-                for u in urls:
-                    self.allow(u)
-                item["fuentes"] = [proxied(u) for u in urls]
+                item["fuentes"] = [self.link(u) for u in urls]
             elif c["tipo"] == "atres":
                 item["embed"] = f"https://www.atresplayer.com/embed/live/{quote(c['slug'])}/"
                 item["web"] = f"https://www.atresplayer.com/directos/{quote(c['slug'])}/"
@@ -140,16 +166,58 @@ class TV:
             out.append(item)
         return out
 
-    def allow(self, url: str) -> None:
-        host = urlsplit(url).hostname
-        if host:
-            self.allowed[host.lower()] = time.time() + HOST_TTL_S
+    def hide(self, secret: str) -> None:
+        """Las direcciones que lleven `secret` (tal cual o codificado) no llegan nunca a la tablet."""
+        for form in {secret, quote(secret, safe=""), quote_plus(secret)}:
+            if form and form not in self.secrets:
+                self.secrets.append(form)
 
-    def permitted(self, url: str) -> bool:
+    def sign(self, url: str) -> str:
+        return hmac.new(self.key, b"u:" + url.encode(), hashlib.sha256).hexdigest()[:32]
+
+    def link(self, url: str) -> str:
+        """La dirección del intermediario para `url`: firmada o, si lleva un secreto, cifrada."""
+        if any(s in url for s in self.secrets):
+            return "/api/tv/hls?k=" + self.seal(url)
+        return f"/api/tv/hls?u={quote(url, safe='')}&s={self.sign(url)}"
+
+    # Cifrado determinista y autenticado (como AES-SIV, con HMAC-SHA256): el vector es el HMAC del texto, así que
+    # descifrar y recalcularlo comprueba a la vez que la ficha la hizo este panel.
+    def _stream(self, iv: bytes, n: int) -> bytes:
+        out = b""
+        counter = 0
+        while len(out) < n:
+            out += hmac.new(self.key, b"k:" + iv + counter.to_bytes(4, "big"), hashlib.sha256).digest()
+            counter += 1
+        return out[:n]
+
+    def seal(self, url: str) -> str:
+        data = url.encode()
+        iv = hmac.new(self.key, b"iv:" + data, hashlib.sha256).digest()[:16]
+        ct = bytes(a ^ b for a, b in zip(data, self._stream(iv, len(data))))
+        return base64.urlsafe_b64encode(iv + ct).decode().rstrip("=")
+
+    def unhide(self, token: str) -> str | None:
+        try:
+            raw = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
+        except (ValueError, TypeError):
+            return None
+        if len(raw) <= 16:
+            return None
+        iv, ct = raw[:16], raw[16:]
+        data = bytes(a ^ b for a, b in zip(ct, self._stream(iv, len(ct))))
+        if not hmac.compare_digest(iv, hmac.new(self.key, b"iv:" + data, hashlib.sha256).digest()[:16]):
+            return None
+        return data.decode("utf-8", "replace")
+
+    def public(self, url: str) -> bool:
+        """http(s) y fuera de la red de casa."""
         parts = urlsplit(url)
-        host = (parts.hostname or "").lower()
-        return (parts.scheme in ("http", "https") and self.allowed.get(host, 0) > time.time()
-                and self.check_public(host))
+        return parts.scheme in ("http", "https") and bool(parts.hostname) and self.check_public(parts.hostname.lower())
+
+    def permitted(self, url: str, sig: str | None) -> bool:
+        """Una dirección que dio el propio panel (firma válida) y que no apunta a la red de casa."""
+        return bool(sig) and hmac.compare_digest(sig, self.sign(url)) and self.public(url)
 
     async def fetch(self, url: str):
         """Pide `url` (ya permitida) y devuelve (cuerpo o flujo, tipo de contenido). Las listas m3u8 se reescriben
@@ -162,8 +230,7 @@ class TV:
                 break
             await r.aclose()
             url = urljoin(url, r.headers["location"])
-            self.allow(url)
-            if not self.permitted(url):
+            if not self.public(url):
                 raise PermissionError(f"Redirección no permitida a {urlsplit(url).hostname}")
         else:
             raise httpx.TooManyRedirects("Demasiadas redirecciones", request=req)
@@ -175,8 +242,7 @@ class TV:
         if is_playlist(final, ctype):
             body = (await r.aread()).decode("utf-8", "replace")
             await r.aclose()
-            self.allow(final)
-            return rewrite(body, final, self.allow), "application/vnd.apple.mpegurl"
+            return rewrite(body, final, self.link), "application/vnd.apple.mpegurl"
         return r, ctype or "application/octet-stream"
 
 
@@ -184,28 +250,24 @@ def is_playlist(url: str, ctype: str) -> bool:
     return "mpegurl" in ctype.lower() or urlsplit(url).path.lower().endswith(".m3u8")
 
 
-def proxied(url: str) -> str:
-    return "/api/tv/hls?u=" + quote(url, safe="")
 
 
 URI_ATTR = re.compile(r'URI="([^"]+)"')
 
 
-def rewrite(playlist: str, base: str, allow) -> str:
+def rewrite(playlist: str, base: str, link) -> str:
     """Cambia cada dirección de la lista (líneas de segmentos o sublistas, y URI="…" de claves, mapas y pistas) por la
-    del intermediario, ya absoluta, y la permite."""
+    del intermediario (firmada o cifrada), ya absoluta."""
     out = []
     for line in playlist.splitlines():
         s = line.strip()
         if s and not s.startswith("#"):
             absolute = urljoin(base, s)
-            allow(absolute)
-            out.append(proxied(absolute))
+            out.append(link(absolute))
         elif s.startswith("#") and 'URI="' in s:
             def sub(m):
                 absolute = urljoin(base, m.group(1))
-                allow(absolute)
-                return f'URI="{proxied(absolute)}"'
+                return f'URI="{link(absolute)}"'
             out.append(URI_ATTR.sub(sub, line))
         else:
             out.append(line)

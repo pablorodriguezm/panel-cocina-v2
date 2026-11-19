@@ -1,7 +1,17 @@
 import httpx
 import pytest
 
+from urllib.parse import parse_qs, urlsplit
+
 from app import config, tv
+
+KEY = b"k" * 32
+
+
+def target(link):
+    """(dirección, firma) de un enlace del intermediario."""
+    q = parse_qs(urlsplit(link).query)
+    return q["u"][0], q.get("s", [None])[0]
 
 MD = """## Nacionales
 
@@ -29,46 +39,58 @@ def test_parse_tdtchannels_keeps_usable_m3u8_only():
 
 
 def test_channels_use_the_list_with_fallback_and_each_kind():
-    t = tv.TV(httpx.AsyncClient(), check_public=lambda h: True)
+    t = tv.TV(httpx.AsyncClient(), check_public=lambda h: True, key=KEY)
     t.streams = tv.parse_tdtchannels(MD)
     chans = {c["id"]: c for c in t.channels()}
     assert list(chans)[:4] == ["la1", "la2", "antena3", "lasexta"]
-    assert chans["la1"]["fuentes"][0] == tv.proxied("https://rtve.example/la1/main.m3u8")
-    assert chans["la1"]["fuentes"][-1] == tv.proxied(tv.CANALES[0]["reserva"])  # la de reserva, al final
-    assert chans["la2"]["fuentes"] == [tv.proxied(tv.CANALES[1]["reserva"])]   # no está en la lista: solo la reserva
+    assert chans["la1"]["fuentes"][0] == t.link("https://rtve.example/la1/main.m3u8")
+    assert chans["la1"]["fuentes"][-1] == t.link(tv.CANALES[0]["reserva"])  # la de reserva, al final
+    assert chans["la2"]["fuentes"] == [t.link(tv.CANALES[1]["reserva"])]   # no está en la lista: solo la reserva
     assert chans["antena3"]["embed"] == "https://www.atresplayer.com/embed/live/antena3/"
     assert chans["laseptima"]["embed"].startswith("https://www.youtube.com/embed/live_stream?channel=")
     assert chans["telecinco"]["tipo"] == "web" and "fuentes" not in chans["telecinco"]
-    assert t.permitted("https://rtve.example/la1/main.m3u8") and t.permitted("https://crtvg.example/x/seg.ts")
+    assert all(t.permitted(*target(f)) for f in chans["la1"]["fuentes"])
 
 
 def test_config_can_choose_the_channels(cfg):
     cfg.write_text("ubicacion: {latitud: 0, longitud: 0}\ntv:\n  canales:\n"
                    "    - {id: mi, nombre: Mi canal, tipo: hls, urls: ['https://mi.example/a.m3u8']}\n", encoding="utf-8")
     config.load.cache_clear()
-    t = tv.TV(httpx.AsyncClient(), check_public=lambda h: True)
+    t = tv.TV(httpx.AsyncClient(), check_public=lambda h: True, key=KEY)
     assert [c["id"] for c in t.channels()] == ["mi"]
 
 
-def test_only_listed_public_hosts_are_permitted():
-    t = tv.TV(httpx.AsyncClient(), check_public=lambda h: h != "router.example")
-    t.allow("https://cdn.example/a.m3u8")
-    t.allow("https://router.example/a.m3u8")
-    assert t.permitted("https://cdn.example/otro/seg.ts")
-    assert not t.permitted("https://otro.example/a.m3u8")   # no está en ninguna lista
-    assert not t.permitted("https://router.example/a.m3u8")  # apunta a la red de casa
-    assert not t.permitted("file:///etc/passwd") and not t.permitted("ftp://cdn.example/x")
+def test_only_signed_public_addresses_are_permitted():
+    t = tv.TV(httpx.AsyncClient(), check_public=lambda h: h != "router.example", key=KEY)
+    url, sig = target(t.link("https://cdn.example/a.m3u8"))
+    assert t.permitted(url, sig)
+    assert not t.permitted("https://cdn.example/otro.m3u8", sig)  # la firma es de otra dirección
+    assert not t.permitted(url, None) and not t.permitted(url, "0" * 32)
+    assert not t.permitted(*target(t.link("https://router.example/a.m3u8")))  # firmada, pero a la red de casa
+    assert not t.permitted(*target(t.link("file:///etc/passwd")))
     assert tv._is_public("localhost") is False
 
 
+def test_signatures_survive_a_restart(tmp_path):
+    """Tras redesplegar, la tablet sigue con los enlaces de antes: tienen que seguir valiendo."""
+    key = tmp_path / "tv-clave.bin"
+    before = tv.TV(httpx.AsyncClient(), check_public=lambda h: True, key=tv.load_key(key))
+    link = before.link("https://rtve.example/la1/main.m3u8")
+    after = tv.TV(httpx.AsyncClient(), check_public=lambda h: True, key=tv.load_key(key))
+    assert after.permitted(*target(link))
+    other = tv.TV(httpx.AsyncClient(), check_public=lambda h: True, key=tv.load_key(tmp_path / "otra.bin"))
+    assert not other.permitted(*target(link))
+    assert oct(key.stat().st_mode & 0o777) == "0o600"
+
+
 def test_rewrite_sends_everything_through_the_proxy():
-    allowed = []
+    t = tv.TV(httpx.AsyncClient(), key=KEY)
     out = tv.rewrite('#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n#EXT-X-MAP:URI="init.mp4"\n#EXTINF:6,\nseg1.ts\n'
-                     "https://otro-cdn.example/seg2.ts\n", "https://cdn.example/live/index.m3u8", allowed.append)
-    assert f'URI="{tv.proxied("https://cdn.example/live/key.bin")}"' in out
-    assert f'URI="{tv.proxied("https://cdn.example/live/init.mp4")}"' in out
-    assert tv.proxied("https://cdn.example/live/seg1.ts") in out and tv.proxied("https://otro-cdn.example/seg2.ts") in out
-    assert "https://otro-cdn.example/seg2.ts" in allowed and out.startswith("#EXTM3U\n")
+                     "https://otro-cdn.example/seg2.ts\n", "https://cdn.example/live/index.m3u8", t.link)
+    assert f'URI="{t.link("https://cdn.example/live/key.bin")}"' in out
+    assert f'URI="{t.link("https://cdn.example/live/init.mp4")}"' in out
+    assert t.link("https://cdn.example/live/seg1.ts") in out and t.link("https://otro-cdn.example/seg2.ts") in out
+    assert out.startswith("#EXTM3U\n")
 
 
 def transport(routes):
@@ -86,11 +108,10 @@ async def test_fetch_rewrites_playlists_streams_segments_and_checks_redirects():
         "https://edge.example/s.ts": lambda: httpx.Response(200, content=b"\x47" * 188, headers={"content-type": "video/mp2t"}),
         "https://cdn.example/b.m3u8": lambda: httpx.Response(302, headers={"location": "http://router.example/admin"}),
     }
-    t = tv.TV(httpx.AsyncClient(transport=transport(routes)), check_public=lambda h: h != "router.example")
-    t.allow("https://cdn.example/a.m3u8")
+    t = tv.TV(httpx.AsyncClient(transport=transport(routes)), check_public=lambda h: h != "router.example", key=KEY)
     body, ctype = await t.fetch("https://cdn.example/a.m3u8")
-    assert ctype == "application/vnd.apple.mpegurl" and tv.proxied("https://edge.example/s.ts") in body
-    assert t.permitted("https://edge.example/s.ts")
+    assert ctype == "application/vnd.apple.mpegurl" and t.link("https://edge.example/s.ts") in body
+    assert t.permitted(*target(t.link("https://edge.example/s.ts")))
     stream, ctype = await t.fetch("https://edge.example/s.ts")
     assert ctype == "video/mp2t" and b"".join([c async for c in stream.aiter_bytes()]) == b"\x47" * 188
     with pytest.raises(PermissionError):
@@ -101,10 +122,10 @@ async def test_fetch_rewrites_playlists_streams_segments_and_checks_redirects():
 async def test_list_failure_keeps_the_fallback_channels():
     def boom(request):
         raise httpx.ConnectError("sin red")
-    t = tv.TV(httpx.AsyncClient(transport=httpx.MockTransport(boom)), check_public=lambda h: True)
+    t = tv.TV(httpx.AsyncClient(transport=httpx.MockTransport(boom)), check_public=lambda h: True, key=KEY)
     await t.refresh()
     assert "TDTChannels" in t.list_error
-    assert next(c for c in t.channels() if c["id"] == "la1")["fuentes"] == [tv.proxied(tv.CANALES[0]["reserva"])]
+    assert next(c for c in t.channels() if c["id"] == "la1")["fuentes"] == [t.link(tv.CANALES[0]["reserva"])]
 
 
 def test_proxy_endpoint_refuses_unlisted_addresses(tmp_path, monkeypatch):
@@ -115,6 +136,7 @@ def test_proxy_endpoint_refuses_unlisted_addresses(tmp_path, monkeypatch):
     with TestClient(main.app) as c:
         assert c.get("/api/tv/hls", params={"u": "http://192.168.1.202:8123/api/states"}).status_code == 403
         assert c.get("/api/tv/hls", params={"u": "https://example.com/x.m3u8"}).status_code == 403
+        assert c.get("/api/tv/hls", params={"u": "https://example.com/x.m3u8", "s": "0" * 32}).status_code == 403
 
 
 @pytest.fixture
