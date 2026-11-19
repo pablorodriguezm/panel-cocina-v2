@@ -40,18 +40,15 @@ KEY_PATH = Path(os.environ.get("PANEL_DATA", "/data")) / "tv-clave.bin"
 
 # Los canales por defecto. «tdt»: nombre exacto en TDTChannels; «reserva»: la dirección si la lista no responde.
 CANALES = [
-    {"id": "la1", "nombre": "La 1", "tipo": "hls", "tdt": "La 1",
-     "reserva": "https://rtvelivestream.rtve.es/rtvesec/la1/la1_main_dvr.m3u8"},
-    {"id": "la2", "nombre": "La 2", "tipo": "hls", "tdt": "La 2",
-     "reserva": "https://rtvelivestream.rtve.es/rtvesec/la2/la2_main_dvr.m3u8"},
+    {"id": "la1", "nombre": "La 1", "tipo": "hls", "tdt": "La 1","reserva": "https://rtvelivestream.rtve.es/rtvesec/la1/la1_main_dvr.m3u8"},
+    {"id": "la2", "nombre": "La 2", "tipo": "hls", "tdt": "La 2","reserva": "https://rtvelivestream.rtve.es/rtvesec/la2/la2_main_dvr.m3u8"},
     {"id": "antena3", "nombre": "Antena 3", "tipo": "atres", "slug": "antena3"},
     {"id": "cuatro", "nombre": "Cuatro", "tipo": "web", "web": "https://www.mediasetinfinity.es/directo/cuatro/"},
     {"id": "telecinco", "nombre": "Telecinco", "tipo": "web","web": "https://www.mediasetinfinity.es/directo/telecinco/"},
     {"id": "lasexta", "nombre": "laSexta", "tipo": "atres", "slug": "lasexta"},
     {"id": "laseptima", "nombre": "La Séptima", "tipo": "youtube", "canal_youtube": "UCOCGPFW1UqPP9zdol7vEK1A"},
     {"id": "24h", "nombre": "24h", "tipo": "hls", "tdt": "24h", "reserva": "https://ztnr.rtve.es/ztnr/1694255.m3u8"},
-    {"id": "tdp", "nombre": "Teledeporte", "tipo": "hls", "tdt": "Teledeporte",
-     "reserva": "https://rtvelivestream.rtve.es/rtvesec/tdp/tdp_main.m3u8"},
+    {"id": "tdp", "nombre": "Teledeporte", "tipo": "hls", "tdt": "Teledeporte","reserva": "https://rtvelivestream.rtve.es/rtvesec/tdp/tdp_main.m3u8"},
     {"id": "clan", "nombre": "Clan", "tipo": "hls", "tdt": "Clan", "reserva": "https://ztnr.rtve.es/ztnr/5466990.m3u8"},
     {"id": "tvg", "nombre": "TVG", "tipo": "hls", "tdt": "TVG", "reserva": "https://crtvg-europa.flumotion.cloud/playlist_dvr.m3u8"},
 ]
