@@ -530,6 +530,12 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .casa > .col:nth-child(3) { grid-column: span 2; }
   .card.fill { min-height: 0; }
   .weather-card { padding: 16px 20px; }
+  /* TV: la imagen se queda quieta y solo se desplaza la lista de canales */
+  #v-tv, .tv { height: 100%; }
+  .tv { grid-template-columns: minmax(0, 1fr) 210px; }
+  .tv-frame { max-height: calc(100% - 36px); }
+  .tv-list.card.fill { overflow: hidden; }
+  .tv-list .scroll { overflow-y: auto; scrollbar-width: none; }
 
   #lock { flex-direction: row; align-items: flex-end; padding: 5vh max(5vw, env(safe-area-inset-left, 0px)) 6vh; }
   .lock-clock { font-size: 34vh; }
