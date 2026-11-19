@@ -85,9 +85,13 @@ async def test_stream_goes_through_opaque_keys_and_never_shows_the_password():
     assert PASS not in body and QPASS not in body and "s3cr" not in body
     lines = [l for l in body.splitlines() if l and not l.startswith("#")]
     assert lines[0].startswith("/api/tv/hls?k=")               # el segmento con la clave en la ruta: ficha
-    assert lines[1] == tv.proxied("https://cdn.example/libre/seg-2.ts")  # sin secreto: dirección normal
-    seg = t.unhide(lines[0].split("k=")[1])
-    assert seg == f"http://edge.example/live/{USER}/{QPASS}/101/seg-1.ts" and t.permitted(seg)
+    assert lines[1] == t.link("https://cdn.example/libre/seg-2.ts")  # sin secreto: dirección firmada normal
+    assert "s=" in lines[1]
+    token = lines[0].split("k=")[1]
+    seg = t.unhide(token)
+    assert seg == f"http://edge.example/live/{USER}/{QPASS}/101/seg-1.ts" and t.public(seg)
+    # La ficha va cifrada (no se ve la clave) y no se puede retocar
+    assert "s3cr" not in token and t.unhide(token[:-2] + ("A" if token[-2] != "A" else "B") + token[-1]) is None
     stream, _ = await t.fetch(seg)
     assert b"".join([c async for c in stream.aiter_bytes()]) == b"\x47" * 188
     assert t.unhide("0" * 32) is None
@@ -137,7 +141,7 @@ def test_endpoints(tmp_path, monkeypatch):
         monkeypatch.setattr(mod, "DATA_PATH", tmp_path / name)
     with TestClient(main.app) as c:
         assert c.get("/api/tv/iptv/101").status_code == 404     # canal que no está (aún) en la lista
-        assert c.get("/api/tv/hls", params={"k": "nada"}).status_code == 404
+        assert c.get("/api/tv/hls", params={"k": "nada"}).status_code == 403
         assert c.get("/api/tv/hls").status_code == 400
     monkeypatch.delenv("IPTV_SERVIDOR")
     with TestClient(main.app) as c:

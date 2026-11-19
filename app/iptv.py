@@ -38,7 +38,6 @@ class IPTV:
         self.creds = credentials()
         if self.creds:
             tv.hide(self.creds[2])
-            tv.allow(self.creds[0])
         self.groups: list[dict] = []
         self.streams: list[dict] = []
         self.ids: set[int] = set()

@@ -6,7 +6,7 @@ POST /api/recordatorios   → el Atajo del iPhone envía las listas de Recordato
 POST /api/recordatorios/recoger → el Atajo recoge lo pasado a la compra desde el panel (cabecera X-Panel-Token)
 GET  /api/menu?semana=0   → menú de la semana (0 esta, 1 la siguiente) y sus ingredientes
 GET  /api/tv              → canales de la pestaña TV
-GET  /api/tv/hls?u=…      → intermediario de vídeo para las emisiones m3u8 (solo las de la lista; ?k=… con ficha opaca)
+GET  /api/tv/hls?u=…&s=…  → intermediario de vídeo: solo direcciones firmadas por el panel (?k=… si llevan la clave IPTV)
 GET  /api/tv/iptv         → «Mi lista»: grupos y canales en directo de la lista IPTV privada
 GET  /api/tv/iptv/{id}    → la emisión de un canal de «Mi lista» (sin que su dirección con la clave salga de aquí)
 POST /api/copias/ok       → el stack «copias» avisa de que la copia de seguridad ha terminado (X-Panel-Token)
@@ -261,20 +261,26 @@ async def tv_my_list_stream(stream_id: int):
     url = state["iptv"].stream_url(stream_id)
     if not url:
         raise HTTPException(404, "Canal desconocido")
-    state["tv"].allow(url)
-    if not state["tv"].permitted(url):  # el servidor de la lista tampoco puede estar en la red de casa
+    if not state["tv"].public(url):  # el servidor de la lista tampoco puede estar en la red de casa
         raise HTTPException(403, "Dirección no permitida")
     return await _tv_send(url)
 
 
 @app.get("/api/tv/hls")
-async def tv_proxy(u: str | None = None, k: str | None = None):
-    """Intermediario de vídeo: solo emisiones de la lista y lo que sus m3u8 enlazan (ver app/tv.py)."""
-    url = state["tv"].unhide(k) if k else u
-    if not url:
-        raise HTTPException(404 if k else 400, "Dirección caducada" if k else "Falta la dirección")
-    if not state["tv"].permitted(url):
-        raise HTTPException(403, "Dirección no permitida")
+async def tv_proxy(u: str | None = None, s: str | None = None, k: str | None = None):
+    """Intermediario de vídeo: solo direcciones que ha dado el propio panel (firmadas o cifradas, ver app/tv.py)."""
+    if k:
+        url = state["tv"].unhide(k)
+        if not url:
+            raise HTTPException(403, "Dirección no válida")
+        if not state["tv"].public(url):
+            raise HTTPException(403, "Dirección no permitida")
+    elif u:
+        url = u
+        if not state["tv"].permitted(url, s):
+            raise HTTPException(403, "Dirección no permitida")
+    else:
+        raise HTTPException(400, "Falta la dirección")
     return await _tv_send(url)
 
 
