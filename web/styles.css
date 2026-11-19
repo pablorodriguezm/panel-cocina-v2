@@ -357,12 +357,10 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .tv-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: calc(100% - 44px); margin: 0 auto;
   background: #000; border-radius: var(--r-md); overflow: hidden; }
 .tv-frame video, .tv-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
-.tv-frame:fullscreen { border-radius: 0; max-height: none; }
 .tv-bar { display: flex; align-items: center; gap: 12px; padding: 10px 4px 0; }
 .tv-bar b { font-size: 18px; font-weight: 600; }
 .tv-msg { flex: 1; min-width: 0; font-size: 13px; color: var(--ink-soft); }
 .tv-link { color: #3F7FD9; font-weight: 600; text-decoration: none; }
-.tv-full { width: 38px; height: 38px; border-radius: 12px; background: var(--highlight); font-size: 20px; }
 .tv-idle { margin: auto; text-align: center; color: var(--ink-soft); max-width: 420px; }
 .tv-idle span { font-size: 56px; display: block; margin-bottom: 8px; }
 .tv-idle p { font-size: 17px; margin: 0 0 14px; }
@@ -532,6 +530,12 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .casa > .col:nth-child(3) { grid-column: span 2; }
   .card.fill { min-height: 0; }
   .weather-card { padding: 16px 20px; }
+  /* TV: la imagen se queda quieta y solo se desplaza la lista de canales */
+  #v-tv, .tv { height: 100%; }
+  .tv { grid-template-columns: minmax(0, 1fr) 210px; }
+  .tv-frame { max-height: calc(100% - 36px); }
+  .tv-list.card.fill { overflow: hidden; }
+  .tv-list .scroll { overflow-y: auto; scrollbar-width: none; }
 
   #lock { flex-direction: row; align-items: flex-end; padding: 5vh max(5vw, env(safe-area-inset-left, 0px)) 6vh; }
   .lock-clock { font-size: 34vh; }

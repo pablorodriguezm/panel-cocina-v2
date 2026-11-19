@@ -318,8 +318,7 @@ function playTV(id, sourceIndex = 0) {
   try { if (c.tipo !== "web") localStorage.setItem("tv-canal", id); } catch { /* sin almacenamiento */ }
   document.querySelectorAll(".tv-chan").forEach((b) => b.classList.toggle("on", b.dataset.tv === id));
   const box = $("tv-screen");
-  const bar = (extra = "") => `<div class="tv-bar"><b>${esc(c.nombre)}</b><span class="tv-msg" id="tv-msg">${extra}</span>
-    <button class="tv-full" id="tv-full" aria-label="Pantalla completa">⛶</button></div>`;
+  const bar = (extra = "") => `<div class="tv-bar"><b>${esc(c.nombre)}</b><span class="tv-msg" id="tv-msg">${extra}</span></div>`;
   if (c.tipo === "web") {
     box.innerHTML = `<div class="tv-idle"><span>🔒</span><p><b>${esc(c.nombre)}</b> no se puede ver dentro del panel:
       su cadena no deja incrustar su reproductor.</p><a class="tv-open" href="${esc(c.web)}" target="_blank" rel="noopener">Abrir en su web</a></div>`;
@@ -353,10 +352,6 @@ function playTV(id, sourceIndex = 0) {
     } else { failed(); return; }
     video.play().catch(() => { /* sin sonido automático: el botón de play de los controles */ });
   }
-  $("tv-full").addEventListener("click", () => {
-    const el = box.querySelector(".tv-frame");
-    (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el);
-  });
 }
 
 // ---------- Detalle de una cita ----------

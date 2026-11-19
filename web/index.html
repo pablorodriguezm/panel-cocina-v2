@@ -52,6 +52,13 @@
         <div class="cal" id="cal"></div>
       </div>
 
+      <div class="view" id="v-tv" data-view="tv" hidden>
+        <div class="tv">
+          <article class="card tv-screen" id="tv-screen"></article>
+          <article class="card fill tv-list" id="tv-list"></article>
+        </div>
+      </div>
+
       <div class="view" id="v-tiempo" data-view="tiempo" hidden>
         <article class="card weather-card" id="weather-full"></article>
       </div>
@@ -98,13 +105,6 @@
         </div>
       </div>
 
-      <div class="view" id="v-tv" data-view="tv" hidden>
-        <div class="tv">
-          <article class="card tv-screen" id="tv-screen"></article>
-          <article class="card fill tv-list" id="tv-list"></article>
-        </div>
-      </div>
-
       <div class="view" id="v-tareas" data-view="tareas" hidden>
         <div class="tareas">
           <div class="col" id="lists"></div>
@@ -118,12 +118,12 @@
       <button class="me" id="me" aria-label="Cambiar de persona"></button>
       <button class="nav" data-go="hoy"></button>
       <button class="nav" data-go="calendario"></button>
+      <button class="nav" data-go="tv"></button>
       <button class="nav" data-go="tiempo"></button>
       <button class="nav" data-go="casa"></button>
       <button class="nav" data-go="energia"></button>
       <button class="nav" data-go="consumo"></button>
       <button class="nav" data-go="tareas"></button>
-      <button class="nav" data-go="tv"></button>
       <button class="nav alerts" id="alerts" hidden aria-label="Avisos"></button>
       <button class="nav" data-action="refresh"></button>
       <button class="nav" data-action="sleep"></button>
