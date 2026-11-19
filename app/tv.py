@@ -258,6 +258,7 @@ def is_playlist(url: str, ctype: str) -> bool:
 URI_ATTR = re.compile(r'URI="([^"]+)"')
 
 
+
 def rewrite(playlist: str, base: str, link) -> str:
     """Cambia cada dirección de la lista (líneas de segmentos o sublistas, y URI="…" de claves, mapas y pistas) por la
     del intermediario (firmada o cifrada), ya absoluta."""
