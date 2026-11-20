@@ -358,7 +358,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   background: #000; border-radius: var(--r-md); overflow: hidden; }
 .tv-frame video, .tv-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
 .tv-bar { display: flex; align-items: center; gap: 12px; padding: 10px 4px 0; }
-.tv-bar b { font-size: 18px; font-weight: 600; }
+.tv-bar b { font-size: 18px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .tv-msg { flex: 1; min-width: 0; font-size: 13px; color: var(--ink-soft); }
 .tv-link { color: #3F7FD9; font-weight: 600; text-decoration: none; }
 .tv-idle { margin: auto; text-align: center; color: var(--ink-soft); max-width: 420px; }
@@ -366,7 +366,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .tv-idle p { font-size: 17px; margin: 0 0 14px; }
 .tv-open { display: inline-block; padding: 10px 18px; border-radius: 999px; font-weight: 600; text-decoration: none;
   color: #3F7FD9; background: color-mix(in srgb, #3F7FD9 13%, transparent); }
-.tv-chans { display: flex; flex-direction: column; gap: 6px; }
+.tv-chans { display: flex; flex-direction: column; gap: 6px; overflow-x: clip; touch-action: pan-y; }
 .tv-tabs { display: flex; gap: 4px; padding: 3px; margin-bottom: 10px; border-radius: 12px; background: var(--highlight); }
 .tv-tabs button { flex: 1; padding: 8px 0; border-radius: 9px; font-weight: 600; font-size: 14px; color: var(--ink-soft); }
 .tv-tabs button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
@@ -376,9 +376,11 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .tv-logo { width: 26px; height: 26px; object-fit: contain; flex: none; align-self: center; border-radius: 6px; }
 .tv-chans#tv-results .tv-chan { justify-content: flex-start; align-items: center; }
 .tv-more { text-align: center; font-size: 13px; }
-.tv-chan { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; text-align: left; padding: 12px 14px;
+.tv-chan { display: flex; flex-wrap: wrap; min-width: 0; align-items: baseline; justify-content: space-between; column-gap: 8px; row-gap: 0; text-align: left; padding: 12px 14px;
   border-radius: 14px; background: var(--highlight); }
-.tv-chan b { font-size: 17px; font-weight: 600; }
+.tv-chan b { font-size: 17px; font-weight: 600; min-width: 0; overflow-wrap: anywhere;
+  /* Los nombres de las listas IPTV pueden ser larguísimos y sin espacios: se parten y como mucho ocupan dos líneas */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .tv-chan small { font-size: 11.5px; color: var(--ink-muted); white-space: nowrap; }
 .tv-chan.on { background: #3F7FD9; color: #fff; }
 .tv-chan.on small { color: rgba(255, 255, 255, .8); }
@@ -544,7 +546,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .tv { grid-template-columns: minmax(0, 1fr) 210px; }
   .tv-frame { max-height: calc(100% - 36px); }
   .tv-list.card.fill { overflow: hidden; }
-  .tv-list .scroll { overflow-y: auto; scrollbar-width: none; }
+  .tv-list .scroll { overflow-x: hidden; overflow-y: auto; scrollbar-width: none; }
 
   #lock { flex-direction: row; align-items: flex-end; padding: 5vh max(5vw, env(safe-area-inset-left, 0px)) 6vh; }
   .lock-clock { font-size: 34vh; }
