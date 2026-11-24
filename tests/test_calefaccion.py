@@ -79,3 +79,74 @@ def test_stale_gas_price_warning():
     assert calefaccion.stale_gas_price(date(2026, 11, 2)) is None
     assert "trimestre nuevo" in calefaccion.stale_gas_price(date(2027, 1, 10))
     assert "No hay precio" in calefaccion.stale_gas_price(date(2026, 1, 1))
+
+
+# ---------- Temperatura exterior: Internet + sensores de casa ----------
+
+NOW = datetime.fromisoformat("2026-12-15T06:40:00+01:00")
+
+
+def ha_state(value, minutes_ago=5, unit="°C"):
+    when = NOW.timestamp() - minutes_ago * 60
+    return {"state": str(value), "attributes": {"unit_of_measurement": unit},
+            "last_updated": datetime.fromtimestamp(when, NOW.tzinfo).isoformat()}
+
+
+def readings(terraza, daikin):
+    states = {"sensor.weather_station_outdoor_module_temperatura": terraza, "sensor.daikinap69395_outside_temperature": daikin}
+    return calefaccion.sensor_readings(states, NOW)
+
+
+def by_name(out):
+    return {f["nombre"]: f for f in out["fuentes"]}
+
+
+def test_three_sources_agreeing_are_averaged():
+    out = calefaccion.combine_outdoor(4.0, readings(ha_state(3.4), ha_state(3)))
+    assert out["temp"] == pytest.approx((4.0 + 3.4 + 3) / 3, abs=0.05)
+    assert all(f["usada"] for f in out["fuentes"]) and not out["discrepan"]
+
+
+def test_a_source_far_from_the_others_is_discarded():
+    # La terraza al sol marca 15 °C con 5 fuera: no cuenta
+    out = calefaccion.combine_outdoor(5.0, readings(ha_state(15.2), ha_state(4)))
+    assert out["temp"] == 4.5
+    terraza = by_name(out)["Terraza"]
+    assert not terraza["usada"] and "se aleja" in terraza["motivo"]
+    # Internet también se descarta si es la que falla
+    out = calefaccion.combine_outdoor(12.0, readings(ha_state(4.2), ha_state(4)))
+    assert out["temp"] == 4.1 and not by_name(out)["Internet"]["usada"]
+
+
+def test_two_sources_are_averaged_and_flagged_when_they_disagree():
+    out = calefaccion.combine_outdoor(4.0, readings(ha_state(5), None))
+    assert out["temp"] == 4.5 and not out["discrepan"]
+    assert by_name(out)["Daikin"]["motivo"] == "no existe en Home Assistant"
+    out = calefaccion.combine_outdoor(4.0, readings(ha_state(10), ha_state("unavailable")))
+    assert out["temp"] == 7.0 and out["discrepan"]
+    assert by_name(out)["Daikin"]["motivo"] == "sin lectura"   # el Daikin sin corriente
+
+
+def test_stale_impossible_and_fahrenheit_readings():
+    r = readings(ha_state(3, minutes_ago=300), ha_state(99))
+    assert r[0]["motivo"] == "lectura de hace 5 h" and r[1]["motivo"] == "lectura imposible"
+    assert calefaccion.combine_outdoor(4.0, r)["temp"] == 4.0   # solo Internet
+    assert readings(ha_state(41, unit="°F"), None)[0]["temp"] == 5.0
+    assert calefaccion.combine_outdoor(None, readings(None, None)) is None
+
+
+def test_the_correction_fades_over_the_next_hours():
+    prices = [HourPrice(datetime(2026, 12, 15, h), 0.1) for h in range(6, 14)]
+    temps = weather({f"2026-12-15T{h:02d}:00": 4 for h in range(6, 14)})
+    outdoor = calefaccion.combine_outdoor(4.0, readings(ha_state(-2), ha_state(-2)))  # en casa hace -2 °C, no 4
+    out = calefaccion.forecast(prices, temps, datetime(2026, 12, 15, 6, 40), outdoor)
+    assert [h["temp"] for h in out["horas"]] == [-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 4.0]
+    assert out["exterior"]["temp"] == -2.0 and out["ahora"]["cop"] == round(calefaccion.cop(-2.0), 2)
+    # Sin sensores, la previsión tal cual
+    assert calefaccion.forecast(prices, temps, datetime(2026, 12, 15, 6, 40))["ahora"]["temp"] == 4
+
+
+def test_sensors_can_be_configured(cfg):
+    set_cfg(cfg, "calefaccion:\n  sensores_exterior:\n    - {entidad: sensor.otro, nombre: Patio}\n")
+    r = calefaccion.sensor_readings({"sensor.otro": ha_state(2)}, NOW)
+    assert [x["nombre"] for x in r] == ["Patio"] and r[0]["temp"] == 2.0

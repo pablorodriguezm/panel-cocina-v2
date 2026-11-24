@@ -869,6 +869,22 @@ function realAir(r) {
   return `<p class="note hc-real">⚡ Gasto real del aire: ${parts.join(" · ")}.</p>`;
 }
 
+// De dónde sale la temperatura exterior: Internet y los sensores de casa, y cuál se ha descartado
+function outdoorNote(ext) {
+  if (!ext || !ext.fuentes || ext.fuentes.length < 2) return "";
+  const deg = (t) => `${t.toLocaleString(ES, { maximumFractionDigits: 1 })}°`;
+  const used = ext.fuentes.filter((f) => f.usada).map((f) => `${esc(f.nombre)} ${deg(f.temp)}`);
+  const out = ext.fuentes.filter((f) => !f.usada && f.temp !== null && f.temp !== undefined)
+    .map((f) => `${esc(f.nombre)} ${deg(f.temp)} (${esc(f.motivo || "descartada")})`);
+  const off = ext.fuentes.filter((f) => f.temp === null || f.temp === undefined).map((f) => `${esc(f.nombre)}: ${esc(f.motivo || "sin lectura")}`);
+  const list = (xs) => xs.length > 1 ? `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}` : xs.join("");
+  let txt = `🌡️ Fuera <b>${deg(ext.temp)}</b>${used.length > 1 ? `: media de ${list(used)}` : used.length ? ` (${used[0]})` : ""}.`;
+  if (out.length) txt += ` Descartada: ${out.join(", ")}.`;
+  if (ext.discrepan) txt += " Las dos fuentes discrepan mucho: revisa el sensor.";
+  if (off.length) txt += ` <span class="hc-off">${off.join(" · ")}</span>`;
+  return `<p class="note hc-ext">${txt}</p>`;
+}
+
 function renderHeatCost() {
   const h = state.home?.calefaccion?.data;
   const el = $("heating-cost");
@@ -895,7 +911,7 @@ function renderHeatCost() {
     <div class="hc-chart"><div class="bars">${bars}</div><div class="hc-gas" style="bottom:${(h.gas.eur_kwh_calor / max) * 100}%"></div></div>
     <div class="axis">${ticks}</div>
     <p class="note hc-sum">${gasHours} Ahora la luz está a <b>${euros(n.pvpc)} €/kWh</b>; con ${Math.round(n.temp)}° fuera,
-      el aire sale más barato mientras esté por debajo de <b>${euros(h.empate_pvpc)} €/kWh</b> (precio PVPC, como en «Luz hoy»).</p>${realAir(h.real)}`;
+      el aire sale más barato mientras esté por debajo de <b>${euros(h.empate_pvpc)} €/kWh</b> (precio PVPC, como en «Luz hoy»).</p>${outdoorNote(h.exterior)}${realAir(h.real)}`;
 }
 
 function renderCar() {

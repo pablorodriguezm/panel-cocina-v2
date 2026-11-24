@@ -117,6 +117,9 @@ calefaccion:
   rendimiento_caldera: 0.90
   cop: [[-10, 2.42], [7, 4.63]]   # Eurovent del ADEAS100A
   factor_real: 0.90
+  sensores_exterior:              # se combinan con la temperatura de Internet (docs/CALEFACCION.md)
+    - {entidad: sensor.weather_station_outdoor_module_temperatura, nombre: Terraza}
+    - {entidad: sensor.daikinap69395_outside_temperature, nombre: Daikin}
 
 # Precio de la luz a la «Tarifa en vivo» de Shelly (docs/SHELLY.md). La URL va en SHELLY_TARIFA_URL (Portainer).
 shelly_tarifa:

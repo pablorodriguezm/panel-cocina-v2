@@ -9,6 +9,12 @@ la potencia contratada de la luz se pagan igual):
 El COP sale de la curva del fabricante (Eurovent) entre sus puntos de ensayo, por un factor de uso real (conductos,
 desescarches). La caldera, del rendimiento estacional de su etiqueta, algo rebajado porque los radiadores van
 calientes. Todo se puede ajustar en config.yaml («calefaccion»).
+
+La temperatura exterior de ahora no sale solo de Internet: se combina con los sensores de casa (la estación Netatmo
+de la terraza y el sensor exterior del Daikin). Cada uno puede equivocarse (el de la terraza al sol, el del Daikin
+cuando la máquina descongela o está sin corriente), así que con tres fuentes se descarta la que se aleje de la
+mediana y se hace la media del resto. La diferencia con la previsión se aplica a la hora en curso y se va diluyendo
+en las siguientes, que siguen la previsión de Open-Meteo.
 """
 from __future__ import annotations
 
@@ -32,6 +38,14 @@ DEFAULTS = {
     "factor_real": 0.90,          # pérdidas en conductos y desescarches frente al ensayo
     "impuesto_electrico": 0.0511269632,
     "iva": 0.21,
+    # Sensores de temperatura exterior de Home Assistant que se combinan con la de Internet
+    "sensores_exterior": [
+        {"entidad": "sensor.weather_station_outdoor_module_temperatura", "nombre": "Terraza"},
+        {"entidad": "sensor.daikinap69395_outside_temperature", "nombre": "Daikin"},
+    ],
+    "max_diferencia_exterior": 3.0,   # °C: más lejos de la mediana, la fuente se descarta
+    "minutos_sensor_exterior": 120,   # una lectura más vieja no cuenta
+    "horas_correccion": 6,            # la corrección se diluye en estas horas
 }
 
 
@@ -96,13 +110,77 @@ def hourly_temps(weather: dict | None) -> dict[str, float]:
     return {t[:13] + ":00": v for t, v in zip(h.get("time", []), h.get("temperature_2m", [])) if v is not None}
 
 
-def forecast(prices: list, weather: dict | None, now: datetime) -> dict | None:
-    """Desde la hora en curso hasta donde haya precio de la luz (hoy, y mañana a partir de las 20:15)."""
+def sensor_readings(states: dict[str, dict | None], now: datetime) -> list[dict]:
+    """Las lecturas de los sensores exteriores de config («sensores_exterior») a partir de sus estados de HA."""
+    c = cfg()
+    out = []
+    for s in c.get("sensores_exterior") or []:
+        if not isinstance(s, dict) or not s.get("entidad"):
+            continue
+        st = states.get(s["entidad"])
+        item = {"nombre": s.get("nombre") or s["entidad"], "entidad": s["entidad"], "temp": None, "usada": False}
+        if st is None:
+            item["motivo"] = "no existe en Home Assistant"
+        else:
+            try:
+                t = float(st.get("state"))
+                if (st.get("attributes") or {}).get("unit_of_measurement") == "°F":
+                    t = (t - 32) * 5 / 9
+            except (TypeError, ValueError):
+                t = None
+            if t is None or not -40 <= t <= 55:
+                item["motivo"] = "sin lectura" if t is None else "lectura imposible"
+            else:
+                item["temp"] = round(t, 1)
+                try:
+                    updated = datetime.fromisoformat(st.get("last_updated") or st.get("last_changed"))
+                    age = (now.astimezone(updated.tzinfo) - updated).total_seconds() / 60
+                except (TypeError, ValueError):
+                    age = 0
+                if age > float(c["minutos_sensor_exterior"]):
+                    item["motivo"] = f"lectura de hace {int(age // 60)} h"
+        out.append(item)
+    return out
+
+
+def combine_outdoor(internet: float | None, sensors: list[dict]) -> dict | None:
+    """La temperatura exterior de ahora: Internet y los sensores válidos. Con tres o más, se descartan los que se
+    alejan de la mediana más de «max_diferencia_exterior» y se hace la media del resto; con dos, la media (sin una
+    tercera no se sabe cuál falla, y se avisa si discrepan)."""
+    limit = float(cfg()["max_diferencia_exterior"])
+    sources = ([{"nombre": "Internet", "temp": round(internet, 1), "usada": False}] if internet is not None else [])
+    sources += [dict(s) for s in sensors]
+    valid = [s for s in sources if s["temp"] is not None and not s.get("motivo")]
+    if not valid:
+        return None
+    vals = sorted(s["temp"] for s in valid)
+    mid = len(vals) // 2
+    median = vals[mid] if len(vals) % 2 else (vals[mid - 1] + vals[mid]) / 2
+    used = [s for s in valid if abs(s["temp"] - median) <= limit] if len(valid) >= 3 else valid
+    if not used:  # todas muy separadas entre sí: la mediana es lo más fiable
+        used = [min(valid, key=lambda s: abs(s["temp"] - median))]
+    for s in valid:
+        if s in used:
+            s["usada"] = True
+        else:
+            s["motivo"] = f"se aleja {abs(s['temp'] - median):.1f}° de las demás".replace(".", ",")
+    temp = sum(s["temp"] for s in used) / len(used)
+    spread = max(vals) - min(vals)
+    return {"temp": round(temp, 1), "fuentes": sources,
+            "discrepan": len(valid) == 2 and spread > limit}
+
+
+def forecast(prices: list, weather: dict | None, now: datetime, outdoor: dict | None = None) -> dict | None:
+    """Desde la hora en curso hasta donde haya precio de la luz (hoy, y mañana a partir de las 20:15).
+    `outdoor`: la temperatura de ahora combinada con los sensores (combine_outdoor); corrige las primeras horas."""
     gas = gas_heat_cost(now.date())
     temps = hourly_temps(weather)
     if gas is None or not prices or not temps:
         return None
     this_hour = now.replace(minute=0, second=0, microsecond=0, tzinfo=None)
+    base = temps.get(this_hour.isoformat(timespec="minutes"))
+    offset = outdoor["temp"] - base if outdoor and base is not None else 0.0
+    fade = max(1.0, float(cfg()["horas_correccion"]))
     hours = []
     for p in prices:
         if p.time < this_hour:
@@ -110,7 +188,8 @@ def forecast(prices: list, weather: dict | None, now: datetime) -> dict | None:
         key = p.time.isoformat(timespec="minutes")
         if key not in temps:
             continue
-        t = temps[key]
+        ahead = (p.time - this_hour).total_seconds() / 3600
+        t = temps[key] + offset * max(0.0, 1 - ahead / fade)
         air = electricity_with_taxes(p.eur_kwh) / cop(t)
         hours.append({"time": key, "temp": round(t, 1), "cop": round(cop(t), 2), "pvpc": round(p.eur_kwh, 5),
                       "aire": round(air, 4), "gas": round(gas, 4), "mejor": "aire" if air <= gas else "gas",
@@ -125,6 +204,7 @@ def forecast(prices: list, weather: dict | None, now: datetime) -> dict | None:
         "horas": hours,
         "horas_gas": gas_hours,
         "empate_pvpc": round(break_even_pvpc(first["temp"], gas), 4),
+        "exterior": outdoor,
         "gas": {"tarifa": cfg()["tarifa_gas"], "eur_kwh": price, "desde": since.isoformat(),
                 "eur_kwh_calor": round(gas, 4), "rendimiento": cfg()["rendimiento_caldera"]},
     }

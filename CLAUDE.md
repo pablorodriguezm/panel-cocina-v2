@@ -40,7 +40,9 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   caldera Bosch Condens 2300i W, frente a PVPC con impuestos ÷ COP del Daikin ADEAS100A de conductos con la
   temperatura de esa hora. Solo coste de uso, sin términos fijos. Solo aconseja, no enciende nada. Debajo, el gasto
   real del aire (app/aire.py): kWh y € diarios del circuito «Climatización» del Shelly, con los grados-día, para
-  afinar el COP con el tiempo (el Shelly mide luz, no calor: el COP no se mide directamente).
+  afinar el COP con el tiempo (el Shelly mide luz, no calor: el COP no se mide directamente). La temperatura
+  exterior de ahora combina Internet, la estación Netatmo de la terraza y el sensor exterior del Daikin (mediana,
+  descartando la que se aleje más de 3 °C); la corrección se diluye en las 6 h siguientes de la previsión.
 - **Tarifa en vivo de Shelly** (app/shelly.py, `docs/SHELLY.md`): cada hora el panel manda el PVPC de esa hora
   (con impuestos) a Shelly Cloud, para que la app de Shelly calcule los costes con el precio real. Solo con
   `SHELLY_TARIFA_URL`.

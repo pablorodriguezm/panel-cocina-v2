@@ -16,10 +16,41 @@ del gas y la potencia contratada de la luz se pagan igual se use o no.
 
 - **Precio de la luz:** el PVPC de REE que ya usa el panel (energía, peajes y cargos, sin impuestos), más el
   impuesto eléctrico (5,11 %) y el IVA.
-- **Temperatura:** la previsión horaria de Open-Meteo.
+- **Temperatura:** la de ahora combina Internet con los sensores de casa (ver abajo); las horas siguientes, la
+  previsión horaria de Open-Meteo con esa corrección diluyéndose.
 - **Precio del gas:** `app/gas.yaml`, el término variable de la TUR por trimestre (BOE), más el impuesto sobre
   hidrocarburos (0,00234 €/kWh) y el IVA. Comprobado con las facturas de Curenergía de 2026.
 - **Precio de empate:** el PVPC por encima del cual empieza a compensar el gas con la temperatura de ahora.
+
+## Temperatura exterior: Internet y los sensores de casa
+
+La temperatura de Internet es la de una rejilla de varios kilómetros, y cada sensor de casa puede fallar a su manera:
+el de la terraza (estación Netatmo) marca de más al sol, y el del Daikin se dispara al descongelar o se queda sin
+lectura cuando la máquina no tiene corriente. Por eso se combinan las tres:
+
+| Fuentes válidas | Qué se hace |
+|---|---|
+| Tres | Se calcula la mediana y se descarta la que se aleje más de 3 °C (`max_diferencia_exterior`); media del resto |
+| Dos | La media; si se llevan más de 3 °C, la tarjeta avisa de que discrepan (sin una tercera no se sabe cuál falla) |
+| Una | Esa |
+
+- No cuentan las lecturas de más de 2 h (`minutos_sensor_exterior`), las que no son un número (`unavailable`) ni las
+  imposibles (fuera de −40 a 55 °C).
+- La diferencia entre la temperatura combinada y la previsión de esta hora se aplica a la hora en curso y se diluye en
+  las 6 siguientes (`horas_correccion`); a partir de ahí, la previsión tal cual.
+- Debajo del resumen, la tarjeta dice de dónde sale la temperatura («media de Internet 4,1° y Daikin 3,8°»), cuál se
+  ha descartado y por qué, y qué sensor no tiene lectura.
+
+Los sensores se cambian en `config.yaml`:
+
+```yaml
+calefaccion:
+  sensores_exterior:
+    - {entidad: sensor.weather_station_outdoor_module_temperatura, nombre: Terraza}
+    - {entidad: sensor.daikinap69395_outside_temperature, nombre: Daikin}
+```
+
+Si una entidad no existe en Home Assistant, la tarjeta lo dice («no existe en Home Assistant») y se ignora.
 
 ## Los equipos de casa
 
@@ -50,6 +81,9 @@ calefaccion:
   rendimiento_caldera: 0.90
   cop: [[-10, 2.42], [7, 4.63]] # puntos (°C, COP) del fabricante
   factor_real: 0.90
+  max_diferencia_exterior: 3    # °C; ver «Temperatura exterior»
+  minutos_sensor_exterior: 120
+  horas_correccion: 6
 ```
 
 ## Mantenimiento
