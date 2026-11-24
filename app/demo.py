@@ -26,6 +26,16 @@ async def prices() -> list[energy.HourPrice]:
     return out
 
 
+def outdoor_states(ids: list[str]) -> list[tuple[str, dict]]:
+    """Sensores exteriores de ejemplo: la terraza, al sol, marca de más (se descarta); el Daikin, casi como Internet."""
+    now = _now()
+    t = round(15 + 6 * math.sin((now.hour - 9) / 24 * 2 * math.pi) + (now.toordinal() % 5) - 2, 1)
+    values = [t + 5.5, t - 0.6]
+    stamp = now.astimezone().isoformat()
+    return [(e, {"state": str(round(v, 1)), "attributes": {"unit_of_measurement": "°C"}, "last_updated": stamp})
+            for e, v in zip(ids, values)]
+
+
 async def weather() -> dict:
     now = _now()
     today = now.date()

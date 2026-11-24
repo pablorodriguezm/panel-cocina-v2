@@ -73,6 +73,13 @@ async def lifespan(_: FastAPI):
         prices = (await state["prices"].get())["data"] or []
         return await (demo.consumption(prices) if DEMO else sources.consumption(ha, prices))
     state["consumption"] = Cached("consumo", 30, _consumption)
+    # Sensores de temperatura exterior para «¿gas o aire?» (estados crudos; los combina app/calefaccion.py)
+    async def _outdoor():
+        ids = [s["entidad"] for s in calefaccion.cfg().get("sensores_exterior") or [] if isinstance(s, dict) and s.get("entidad")]
+        if DEMO:
+            return demo.outdoor_states(ids)
+        return list((await ha.states(ids)).items()) if ids else []
+    state["outdoor"] = Cached("exterior", 5 * 60, _outdoor)
     state["house"] = Cached("casa", 20, (lambda: demo.house()) if DEMO else (lambda: sources.house(ha)))
     # Consumo real del aire (circuito de climatización): cada 10 minutos
     state["air_store"] = aire.Store()
@@ -99,7 +106,11 @@ app = FastAPI(title="Panel de cocina", lifespan=lifespan, docs_url=None, redoc_u
 async def _heating() -> dict:
     """¿Gas o aire? Con el precio de la luz y la previsión del tiempo que ya tiene el panel."""
     prices, weather = await state["prices"].get(), await state["weather"].get()
-    data = calefaccion.forecast(prices["data"] or [], weather["data"], datetime.now(config.zone()))
+    now = datetime.now(config.zone())
+    internet = ((weather["data"] or {}).get("current") or {}).get("temperature_2m")
+    sensors = (await state["outdoor"].get())["data"] or []
+    outdoor = calefaccion.combine_outdoor(internet, calefaccion.sensor_readings(dict(sensors), now))
+    data = calefaccion.forecast(prices["data"] or [], weather["data"], now, outdoor)
     if data:
         data["real"] = (await state["air"].get())["data"]
     return {"data": data, "stale": prices["stale"] or weather["stale"], "error": None}
