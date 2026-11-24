@@ -93,7 +93,7 @@ def ha_state(value, minutes_ago=5, unit="°C"):
 
 
 def readings(terraza, daikin):
-    states = {"sensor.weather_station_outdoor_module_temperatura": terraza, "sensor.daikinap69395_outside_temperature": daikin}
+    states = {"sensor.weather_station_outdoor_module_temperatura": terraza, "sensor.daikinap69395_climatecontrol_outdoor_temperature": daikin}
     return calefaccion.sensor_readings(states, NOW)
 
 

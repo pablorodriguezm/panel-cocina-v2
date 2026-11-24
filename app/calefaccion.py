@@ -41,7 +41,7 @@ DEFAULTS = {
     # Sensores de temperatura exterior de Home Assistant que se combinan con la de Internet
     "sensores_exterior": [
         {"entidad": "sensor.weather_station_outdoor_module_temperatura", "nombre": "Terraza"},
-        {"entidad": "sensor.daikinap69395_outside_temperature", "nombre": "Daikin"},
+        {"entidad": "sensor.daikinap69395_climatecontrol_outdoor_temperature", "nombre": "Daikin"},
     ],
     "max_diferencia_exterior": 3.0,   # °C: más lejos de la mediana, la fuente se descarta
     "minutos_sensor_exterior": 120,   # una lectura más vieja no cuenta

@@ -47,7 +47,7 @@ Los sensores se cambian en `config.yaml`:
 calefaccion:
   sensores_exterior:
     - {entidad: sensor.weather_station_outdoor_module_temperatura, nombre: Terraza}
-    - {entidad: sensor.daikinap69395_outside_temperature, nombre: Daikin}
+    - {entidad: sensor.daikinap69395_climatecontrol_outdoor_temperature, nombre: Daikin}
 ```
 
 Si una entidad no existe en Home Assistant, la tarjeta lo dice («no existe en Home Assistant») y se ignora.
