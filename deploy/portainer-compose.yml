@@ -6,7 +6,7 @@
 name: panel-cocina
 services:
   panel:
-    image: ghcr.io/pablorodriguezm/panel-cocina-v2:sha-b20ee10
+    image: ghcr.io/pablorodriguezm/panel-cocina-v2:sha-c274cd2
     container_name: panel-cocina
     environment:
       TZ: Europe/Madrid
