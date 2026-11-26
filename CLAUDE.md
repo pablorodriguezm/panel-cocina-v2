@@ -70,6 +70,10 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   «Mi lista» (app/iptv.py): la lista IPTV privada (Xtream: servidor, usuario y clave en variables de Portainer), solo
   canales en directo, con buscador y grupos. La clave nunca sale del servidor: la tablet recibe ids y fichas opacas.
   Para Antena 3 y laSexta (DRM) el panel se abre por https (proxy inverso del Synology, solo red de casa).
+  «Podcasts» (app/podcasts.py, `docs/PODCASTS.md`): la cuenta de Overcast del usuario (OVERCAST_EMAIL y OVERCAST_CLAVE
+  en Portainer). Overcast no deja meter su web (X-Frame-Options: DENY), así que el servidor hace lo que su web:
+  inicia sesión, lee catálogo y capítulos y guarda el progreso con `/podcasts/set_progress` (vía no oficial). El audio
+  sigue sonando al cambiar de vista, con una pastilla 🎧 para pausar.
 - **Estructura como el marco original:** barra de navegación a la derecha (avatar, Hoy, Calendario, TV, Tiempo,
   Casa, Energía, Consumo, Tareas, Actualizar, Dormir y la hora) con una vista por sección. Las capturas de referencia están en
   github.com/pablorodriguezm/panel-cocina/tree/main/docs/capturas. No volver a una sola pantalla.
@@ -87,7 +91,7 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 - Despliegue real: ZimaOS en 192.168.1.34 (Portainer :9000, panel :8090), Home Assistant en 192.168.1.202.
   La configuración vive en el servidor en /DATA/AppData/panel-cocina/config/config.yaml.
 - Secretos solo en variables de Portainer o `.env` (ignorado): `HA_TOKEN`, `PANEL_TOKEN`, `SHELLY_TARIFA_URL`,
-  `IPTV_SERVIDOR`, `IPTV_USUARIO`, `IPTV_CLAVE` y,
+  `IPTV_SERVIDOR`, `IPTV_USUARIO`, `IPTV_CLAVE`, `OVERCAST_EMAIL`, `OVERCAST_CLAVE` y,
   en el stack de copias, `SMB_USER` y `SMB_PASSWORD`
   (copia en Bitwarden → ZIMA_OS). `config/config.yaml`
   tampoco se sube.

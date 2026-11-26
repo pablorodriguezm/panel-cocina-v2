@@ -369,6 +369,29 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .tv-open { display: inline-block; padding: 10px 18px; border-radius: 999px; font-weight: 600; text-decoration: none;
   color: #3F7FD9; background: color-mix(in srgb, #3F7FD9 13%, transparent); }
 .tv-chans { display: flex; flex-direction: column; gap: 6px; overflow-x: clip; touch-action: pan-y; }
+/* Podcasts */
+.pod-back { color: #3F7FD9; font-weight: 600; font-size: 14px; padding: 4px 0 6px; text-align: left; }
+.pod-ep .tv-logo { width: 34px; height: 34px; }
+.pod-ep small { flex-basis: 100%; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.tv-chans .sub-h { margin: 10px 0 2px; }
+.pod-player { display: flex; gap: 22px; align-items: center; width: 100%; height: 100%; padding: 8px; min-height: 0; }
+.pod-art { width: min(42%, 340px); aspect-ratio: 1; object-fit: cover; border-radius: 18px; background: var(--highlight);
+  display: grid; place-items: center; font-size: 64px; flex: none; box-shadow: 0 10px 30px rgba(0, 0, 0, .15); }
+.pod-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.pod-info small { color: var(--ink-soft); font-size: 14px; }
+.pod-info b { font-size: 22px; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3; overflow: hidden; }
+.pod-seek { width: 100%; accent-color: #E8604C; }
+.pod-times { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.pod-ctrls { display: flex; gap: 14px; align-items: center; }
+.pod-btn { padding: 12px 16px; border-radius: 999px; background: var(--highlight); color: var(--ink); font-weight: 700; font-size: 16px; }
+.pod-btn.main { width: 64px; height: 64px; padding: 0; border-radius: 50%; background: #E8604C; color: #fff; font-size: 24px; }
+.pod-speeds { display: flex; gap: 6px; flex-wrap: wrap; }
+.pod-pill { pointer-events: auto; display: flex; align-items: center; gap: 8px; max-width: 220px; padding: 8px 14px; border-radius: 16px;
+  background: var(--card); color: var(--ink); box-shadow: 0 6px 18px rgba(0, 0, 0, .18), 0 0 0 1px var(--line); }
+.pod-pill b { color: #E8604C; font-size: 16px; }
+.pod-pill span { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pod-pill[hidden] { display: none; }
 .tv-tabs { display: flex; gap: 4px; padding: 3px; margin-bottom: 10px; border-radius: 12px; background: var(--highlight); }
 .tv-tabs button { flex: 1; padding: 8px 0; border-radius: 9px; font-weight: 600; font-size: 14px; color: var(--ink-soft); }
 .tv-tabs button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
@@ -505,6 +528,8 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .weather-card { min-width: 0; }
   .casa, .tareas, .consumo, .tv { height: auto; }
   .tv-frame { max-height: none; }
+  .pod-player { flex-direction: column; align-items: stretch; height: auto; }
+  .pod-art { width: min(60%, 260px); align-self: center; }
   .tareas { grid-template-columns: 1fr 1fr; }
   /* Tiempo: las 24 horas se desplazan de lado si no caben */
   .wf-scroll { overflow-x: auto; scrollbar-width: none; }
@@ -600,6 +625,10 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .tv-frame { max-height: calc(100% - 36px); }
   .tv-list.card.fill { overflow: hidden; }
   .tv-list .scroll { overflow-x: hidden; overflow-y: auto; scrollbar-width: none; }
+  .pod-player { flex-direction: row; align-items: center; height: 100%; gap: 14px; }
+  .pod-art { width: 34%; }
+  .pod-info b { font-size: 17px; -webkit-line-clamp: 2; }
+  .pod-btn.main { width: 50px; height: 50px; }
 
   #lock { flex-direction: row; align-items: flex-end; padding: 5vh max(5vw, env(safe-area-inset-left, 0px)) 6vh; }
   .lock-clock { font-size: 34vh; }

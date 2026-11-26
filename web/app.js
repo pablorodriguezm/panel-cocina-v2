@@ -9,7 +9,8 @@ const CAL_NAME = "Rim y Pablo";
 
 const state = {
   tv: { channels: null, current: null, playing: false, hls: null, error: null,
-        hasList: false, myList: null, tab: null, q: "", group: "" },
+        hasList: false, myList: null, tab: null, q: "", group: "", hasPod: false },
+  pod: { lib: null, feed: null, ep: null, playing: false, busy: false, synced: 0, error: null },
   users: [], user: null, view: "hoy", home: null, house: null, power: null, trips: {}, list: null, weatherDay: null,
   pending: {}, busy: null, houseError: null,
   menu: [], menuWeek: 0, menuBusy: null,  // menú de esta semana y de la siguiente
@@ -243,6 +244,7 @@ function setupRail() {
   $("me").addEventListener("click", lock);
   $("alerts").addEventListener("click", openAlerts);
   $("timer-fab").addEventListener("click", openTimers);
+  setupPodcasts();
 }
 
 // ---------- Avisos de mantenimiento ----------
@@ -270,7 +272,7 @@ function openAlerts() {
 function resetIdle() {
   clearTimeout(state.idleTimer);
   // Con la tele puesta no se vuelve a la pantalla de bloqueo
-  if (state.user) state.idleTimer = setTimeout(() => (state.tv.playing ? resetIdle() : lock()), state.idleMs);
+  if (state.user) state.idleTimer = setTimeout(() => (state.tv.playing || state.pod.playing ? resetIdle() : lock()), state.idleMs);
 }
 
 // ---------- Cocina: temporizadores y fogón olvidado ----------
@@ -474,10 +476,12 @@ async function loadTV() {
       state.tv.channels = r.canales;
       state.tv.error = r.error;
       state.tv.hasList = !!r.mi_lista;
+      state.tv.hasPod = !!r.podcasts;
     } catch (e) { console.warn(e); state.tv.error = "No se pudo cargar la lista de canales."; }
   }
   if (state.tv.tab === null) {
-    state.tv.tab = tvPref("tv-tab") === "lista" ? "lista" : "abiertos";
+    const saved = tvPref("tv-tab");
+    state.tv.tab = ["lista", "podcasts"].includes(saved) ? saved : "abiertos";
     state.tv.group = tvPref("tv-grupo") || "";
   }
   renderTV();
@@ -520,12 +524,16 @@ function tvChannel(id) {
 
 function renderTV() {
   const chans = state.tv.channels || [];
-  const tab = state.tv.hasList ? state.tv.tab : "abiertos";
+  const tabList = [["abiertos", "Abiertos"], ...(state.tv.hasList ? [["lista", "Mi lista"]] : []),
+    ...(state.tv.hasPod ? [["podcasts", "Podcasts"]] : [])];
+  const tab = tabList.some(([k]) => k === state.tv.tab) ? state.tv.tab : "abiertos";
   const kind = { hls: "", atres: "Atresplayer", youtube: "YouTube", web: "Solo en su web" };
-  const tabs = state.tv.hasList ? `<div class="tv-tabs">${[["abiertos", "Abiertos"], ["lista", "Mi lista"]].map(([k, l]) =>
+  const tabs = tabList.length > 1 ? `<div class="tv-tabs">${tabList.map(([k, l]) =>
     `<button data-tvtab="${k}" class="${tab === k ? "on" : ""}">${l}</button>`).join("")}</div>` : "";
   let body;
-  if (tab === "lista") {
+  if (tab === "podcasts") {
+    body = podListHTML();
+  } else if (tab === "lista") {
     const list = state.tv.myList;
     const groups = (list?.grupos || []).filter((g) => list.canales.some((c) => c.g === g.id));
     body = list && list.canales.length
@@ -544,8 +552,15 @@ function renderTV() {
   $("tv-list").querySelectorAll("[data-tvtab]").forEach((b) => b.addEventListener("click", () => {
     state.tv.tab = b.dataset.tvtab;
     tvPref("tv-tab", state.tv.tab);
+    if (state.tv.tab === "podcasts") stopTV();  // la tele se para; el podcast que suene, sigue
     renderTV();
   }));
+  if (tab === "podcasts") {
+    bindPodList();
+    renderPodPlayer();
+    if (!state.pod.lib) loadPodcasts();
+    return;
+  }
   $("tv-list").querySelectorAll(".tv-chans:not(#tv-results) [data-tv]").forEach((b) => b.addEventListener("click", () => playTV(b.dataset.tv)));
   if ($("tv-results")) {
     $("tv-q").addEventListener("input", (e) => { state.tv.q = e.target.value; renderTVResults(); });
@@ -557,6 +572,145 @@ function renderTV() {
     if (saved && saved.tipo !== "web") return playTV(saved.id);
     $("tv-screen").innerHTML = `<div class="tv-idle"><span>📺</span><p>Elige un canal</p></div>`;
   }
+}
+
+// ---------- Podcasts (Overcast) ----------
+
+const POD_SPEEDS = [1, 1.25, 1.5, 2];
+const podTime = (s) => mmss(s || 0);
+
+async function loadPodcasts(force = false) {
+  try {
+    state.pod.lib = await getJSON("/api/podcasts" + (force ? "?r=" + Date.now() : ""));
+    state.pod.error = state.pod.lib.error;
+  } catch (e) { console.warn(e); state.pod.error = "No se pudo cargar Overcast."; }
+  if (state.view === "tv" && state.tv.tab === "podcasts") renderTV();
+}
+
+function podListHTML() {
+  const lib = state.pod.lib, f = state.pod.feed;
+  const epBtn = (e, sub) => `<button class="tv-chan pod-ep${state.pod.ep?.id === e.id ? " on" : ""}" data-ep="${esc(e.id)}">
+      ${e.arte ? `<img class="tv-logo" src="${esc(e.arte)}" alt="" loading="lazy" onerror="this.remove()">` : ""}
+      <b>${e.nuevo ? "● " : ""}${esc(e.titulo)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</button>`;
+  if (f) {
+    return `<button class="pod-back" data-back>‹ Mis podcasts</button><p class="sub-h">${esc(f.titulo)}</p>
+      <div class="scroll tv-chans">${f.capitulos ? f.capitulos.map((e) => epBtn(e, e.info)).join("") || `<p class="empty">Sin capítulos.</p>`
+        : `<p class="empty">Cargando…</p>`}</div>`;
+  }
+  if (!lib) return `<p class="empty">${esc(state.pod.error || "Cargando tus podcasts…")}</p>`;
+  return `<div class="scroll tv-chans">${lib.error ? `<p class="empty">${esc(lib.error)}</p>` : ""}
+    ${lib.en_curso.length ? `<p class="sub-h">Para seguir</p>${lib.en_curso.map((e) => epBtn(e, [e.podcast, e.info].filter(Boolean).join(" · "))).join("")}` : ""}
+    ${lib.podcasts.length ? `<p class="sub-h">Mis podcasts</p>${lib.podcasts.map((p) => `<button class="tv-chan pod-ep" data-feed="${esc(p.ruta)}">
+      ${p.arte ? `<img class="tv-logo" src="${esc(p.arte)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<b>${esc(p.titulo)}</b></button>`).join("")}` : ""}</div>`;
+}
+
+function bindPodList() {
+  const root = $("tv-list");
+  root.querySelectorAll("[data-ep]").forEach((b) => b.addEventListener("click", () => openEpisode(b.dataset.ep)));
+  root.querySelectorAll("[data-feed]").forEach((b) => b.addEventListener("click", () => openFeed(b.dataset.feed, b.innerText.trim())));
+  root.querySelector("[data-back]")?.addEventListener("click", () => { state.pod.feed = null; renderTV(); });
+}
+
+async function openFeed(ruta, titulo) {
+  state.pod.feed = { ruta, titulo, capitulos: null };
+  renderTV();
+  try {
+    const r = await getJSON("/api/podcasts/podcast?ruta=" + encodeURIComponent(ruta));
+    if (state.pod.feed?.ruta === ruta) state.pod.feed.capitulos = r.capitulos;
+  } catch (e) { console.warn(e); if (state.pod.feed?.ruta === ruta) state.pod.feed.capitulos = []; }
+  renderTV();
+}
+
+async function openEpisode(id) {
+  if (state.pod.busy) return;
+  state.pod.busy = true;
+  await podSync();  // lo que sonaba, guardado antes de cambiar
+  try {
+    const r = await fetch(`/api/podcasts/episodio/${encodeURIComponent(id)}`);
+    const ep = await r.json();
+    if (!r.ok) throw new Error(ep.detail || r.status);
+    stopTV();
+    const a = $("pod-audio");
+    state.pod.ep = ep;
+    a.src = ep.audio;
+    a.playbackRate = (ep.velocidad_id || 0) / 1000 || 1;
+    a.currentTime = 0;
+    a.addEventListener("loadedmetadata", () => { if (ep.inicio && ep.inicio < (a.duration || Infinity)) a.currentTime = ep.inicio; }, { once: true });
+    a.play().catch(() => { /* sin sonido automático: el botón de play */ });
+    state.pod.synced = ep.inicio || 0;
+    state.pod.error = null;
+    try { localStorage.setItem("pod-ep", id); } catch { /* sin almacenamiento */ }
+  } catch (e) {
+    console.warn(e);
+    state.pod.error = `No se pudo abrir el capítulo: ${e.message}`;
+  }
+  state.pod.busy = false;
+  renderTV();
+}
+
+// Guarda en Overcast por dónde vas (cada 15 s sonando, al pausar y al acabar); con «beacon», al cerrar la página
+async function podSync(finished = false, beacon = false) {
+  const ep = state.pod.ep, a = $("pod-audio");
+  if (!ep || (!finished && !a.currentTime)) return;
+  const body = JSON.stringify({ id: ep.id, segundos: Math.floor(a.currentTime), terminado: finished });
+  state.pod.synced = a.currentTime;
+  if (beacon && navigator.sendBeacon) return navigator.sendBeacon("/api/podcasts/progreso", new Blob([body], { type: "application/json" }));
+  try { await fetch("/api/podcasts/progreso", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }); }
+  catch (e) { console.warn(e); }
+}
+
+function renderPodPlayer() {
+  const box = $("tv-screen"), ep = state.pod.ep;
+  if (!box || state.view !== "tv" || state.tv.tab !== "podcasts") return;
+  if (!ep) {
+    box.innerHTML = `<div class="tv-idle"><span>🎧</span><p>${esc(state.pod.error || "Elige un capítulo: sigue donde lo dejaste en Overcast")}</p></div>`;
+    return;
+  }
+  const a = $("pod-audio");
+  box.innerHTML = `<div class="pod-player">
+      ${ep.arte ? `<img class="pod-art" src="${esc(ep.arte)}" alt="">` : `<div class="pod-art">🎧</div>`}
+      <div class="pod-info"><small>${esc(ep.podcast || "")}</small><b>${esc(ep.titulo || "")}</b>
+        <input type="range" class="pod-seek" id="pod-seek" min="0" max="${Math.floor(a.duration || 0)}" value="${Math.floor(a.currentTime)}" step="1">
+        <div class="pod-times"><span id="pod-cur">${podTime(a.currentTime)}</span><span id="pod-left">-${podTime((a.duration || 0) - a.currentTime)}</span></div>
+        <div class="pod-ctrls"><button class="pod-btn" data-skip="-15">↺ 15</button>
+          <button class="pod-btn main" id="pod-play">${a.paused ? "▶" : "❚❚"}</button>
+          <button class="pod-btn" data-skip="30">30 ↻</button></div>
+        <div class="pod-speeds">${POD_SPEEDS.map((s) => `<button class="t-name${Math.abs(a.playbackRate - s) < .01 ? " on" : ""}" data-speed="${s}">${String(s).replace(".", ",")}×</button>`).join("")}</div>
+        ${state.pod.error ? `<p class="tv-msg">${esc(state.pod.error)}</p>` : ""}</div></div>`;
+  $("pod-play").addEventListener("click", () => (a.paused ? a.play() : a.pause()));
+  box.querySelectorAll("[data-skip]").forEach((b) => b.addEventListener("click", () => { a.currentTime = Math.max(0, a.currentTime + +b.dataset.skip); }));
+  box.querySelectorAll("[data-speed]").forEach((b) => b.addEventListener("click", () => { a.playbackRate = +b.dataset.speed; renderPodPlayer(); }));
+  $("pod-seek").addEventListener("change", (e) => { a.currentTime = +e.target.value; podSync(); });
+}
+
+function podTick() {
+  const a = $("pod-audio");
+  if ($("pod-seek") && document.activeElement !== $("pod-seek")) {
+    $("pod-seek").max = Math.floor(a.duration || 0);
+    $("pod-seek").value = Math.floor(a.currentTime);
+  }
+  if ($("pod-cur")) $("pod-cur").textContent = podTime(a.currentTime);
+  if ($("pod-left")) $("pod-left").textContent = "-" + podTime((a.duration || 0) - a.currentTime);
+  if (state.pod.playing && Math.abs(a.currentTime - state.pod.synced) >= 15) podSync();
+}
+
+function renderPodPill() {
+  const pill = $("pod-pill"), a = $("pod-audio");
+  pill.hidden = !state.pod.ep || (a.paused && !state.pod.playing && a.currentTime === 0);
+  pill.innerHTML = `<b>${a.paused ? "▶" : "❚❚"}</b><span>${esc(state.pod.ep?.titulo || "")}</span>`;
+}
+
+function setupPodcasts() {
+  const a = $("pod-audio");
+  a.addEventListener("play", () => { state.pod.playing = true; renderPodPlayer(); renderPodPill(); resetIdle(); });
+  a.addEventListener("pause", () => { state.pod.playing = false; podSync(); renderPodPlayer(); renderPodPill(); });
+  a.addEventListener("ended", () => { state.pod.playing = false; podSync(true); state.pod.lib = null; renderPodPlayer(); renderPodPill(); });
+  a.addEventListener("timeupdate", podTick);
+  a.addEventListener("loadedmetadata", podTick);
+  a.addEventListener("error", () => { state.pod.error = "No se puede reproducir el audio de este capítulo."; state.pod.playing = false; renderPodPlayer(); });
+  $("pod-pill").addEventListener("click", () => (a.paused ? a.play() : a.pause()));
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && state.pod.playing) podSync(false, true); });
+  addEventListener("pagehide", () => { if (state.pod.playing) podSync(false, true); });
 }
 
 // Solo la lista de resultados: así el buscador no pierde el foco mientras se escribe
@@ -587,6 +741,7 @@ function stopTV() {
 }
 
 function playTV(id, sourceIndex = 0, retried = false) {
+  if (state.pod.playing) $("pod-audio").pause();  // no dos sonidos a la vez
   const c = tvChannel(id);
   if (!c) return;
   stopTV();
