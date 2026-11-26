@@ -314,25 +314,49 @@ const startTimer = (minutos, nombre) => kitchenCall("/api/cocina/temporizadores"
 const addTime = (id, minutos) => kitchenCall(`/api/cocina/temporizadores/${id}/sumar`, "POST", { minutos });
 const stopTimer = (id) => kitchenCall(`/api/cocina/temporizadores/${id}`, "DELETE");
 
-// Pitidos con WebAudio: el navegador solo deja sonar tras un primer toque, que siempre hay (el avatar)
-let audio;
-function beep(times = 3) {
+// Alarmas con WebAudio: ondas cuadradas por un compresor, que suenan mucho más que un pitido suave. El navegador solo
+// deja sonar tras un primer toque, que siempre hay (el avatar). El volumen máximo es el multimedia de la tablet.
+let audio, out;
+function audioOut() {
+  audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+  if (audio.state === "suspended") audio.resume();
+  if (!out) {
+    const comp = audio.createDynamicsCompressor();
+    comp.threshold.value = -12; comp.knee.value = 6; comp.ratio.value = 12; comp.attack.value = 0.002; comp.release.value = 0.1;
+    out = audio.createGain();
+    out.gain.value = 1.6;
+    out.connect(comp).connect(audio.destination);
+  }
+  return out;
+}
+function tone(start, freq, dur, endFreq = freq) {
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.type = "square";
+  o.frequency.setValueAtTime(freq, start);
+  if (endFreq !== freq) o.frequency.linearRampToValueAtTime(endFreq, start + dur);
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.exponentialRampToValueAtTime(0.9, start + 0.01);
+  g.gain.setValueAtTime(0.9, start + dur - 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  o.connect(g).connect(audioOut());
+  o.start(start);
+  o.stop(start + dur + 0.02);
+}
+// «timer»: tres ráfagas de cuatro pitidos a dos tonos; «fire»: sirena; «soft»: dos pitidos
+function beep(kind = "timer") {
   try {
-    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
-    if (audio.state === "suspended") audio.resume();
-    for (let i = 0; i < times; i++) {
-      const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * 0.35;
-      o.frequency.value = 880;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
-      o.connect(g).connect(audio.destination);
-      o.start(t);
-      o.stop(t + 0.3);
+    audioOut();
+    const t0 = audio.currentTime + 0.05;
+    if (kind === "fire") {
+      for (let i = 0; i < 4; i++) { tone(t0 + i * 0.9, 650, 0.45, 1500); tone(t0 + i * 0.9 + 0.45, 1500, 0.45, 650); }
+    } else if (kind === "soft") {
+      tone(t0, 1046, 0.18); tone(t0 + 0.3, 1318, 0.25);
+    } else {
+      for (let r = 0; r < 3; r++) for (let i = 0; i < 4; i++) tone(t0 + r * 1.1 + i * 0.17, i % 2 ? 1318 : 1046, 0.12);
     }
   } catch { /* sin audio */ }
 }
-document.addEventListener("pointerdown", () => { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch { /* sin audio */ } }, { passive: true });
+document.addEventListener("pointerdown", () => { try { audioOut(); } catch { /* sin audio */ } }, { passive: true });
 
 function renderKitchen() {
   const d = state.kitchen.data;
@@ -375,8 +399,8 @@ function renderKitchenAlert() {
     banner.querySelector("[data-seen]").addEventListener("click", () => kitchenCall("/api/cocina/fogon/visto"));
   }
   const key = `${done.map((t) => t.id).join(",")}|${strong}|${soft}`;
-  if ((done.length || strong) && key !== state.kitchen.ringing) beep(4);
-  else if (soft && key !== state.kitchen.ringing) beep(2);
+  if ((done.length || strong) && key !== state.kitchen.ringing) beep(done.length ? "timer" : "fire");
+  else if (soft && key !== state.kitchen.ringing) beep("soft");
   state.kitchen.ringing = key;
 }
 
@@ -384,8 +408,8 @@ function renderKitchenAlert() {
 setInterval(() => {
   const d = state.kitchen.data;
   if (!d) return;
-  const ringing = d.temporizadores.some((t) => t.acabado) || (d.fogon.nivel === "fuerte" && !d.fogon.visto);
-  if (ringing) beep(3);
+  if (d.temporizadores.some((t) => t.acabado)) beep("timer");
+  else if (d.fogon.nivel === "fuerte" && !d.fogon.visto) beep("fire");
 }, 4000);
 
 function openTimers() {
