@@ -83,6 +83,25 @@ def test_timers_finish_are_announced_and_survive_a_restart(tmp_path):
     assert k.timers == []                                # el acabado y sin parar desaparece solo
 
 
+@pytest.mark.anyio
+async def test_a_timer_marked_done_by_the_tablet_is_still_announced(tmp_path):
+    """La tablet consulta cada 5 s y esa consulta ya marca el temporizador como acabado: el Echo tiene que hablar igual."""
+    k, clock, ha = kitchen(tmp_path)
+    k.add_timer(1, "Huevos")
+    clock.advance(1.1)
+    assert k.view()["temporizadores"][0]["acabado"] is True   # lo marca la consulta de la tablet…
+    await k.step()                                              # …y la vuelta del servidor lo anuncia igual
+    assert [c[2]["message"] for c in ha.calls] == ["El temporizador Huevos ha terminado."]
+    await k.step()
+    assert len(ha.calls) == 1                                   # una sola vez
+    t = k.timers[0]
+    k.add_time(t["id"], 1)                                      # +1 min: vuelve a anunciarse al acabar
+    clock.advance(1.1)
+    k.view()
+    await k.step()
+    assert len(ha.calls) == 2
+
+
 def test_timer_limits(tmp_path):
     k, _, _ = kitchen(tmp_path)
     for bad in (0, -1, 13 * 60):
