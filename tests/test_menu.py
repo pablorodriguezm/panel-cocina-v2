@@ -1,5 +1,6 @@
 from collections import Counter
-from datetime import date
+from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,7 +13,9 @@ UNIDADES = {"g", "ml", "ud", "diente", "lata", "manojo", "barra"}
 @pytest.fixture(autouse=True)
 def cfg(tmp_path, monkeypatch):
     p = tmp_path / "config.yaml"
-    p.write_text("ubicacion: {latitud: 0, longitud: 0}\nrecordatorios: {listas: [Compra, Casa]}\n", encoding="utf-8")
+    # Las pruebas del sorteo, en modo recetario; las de los planes lo cambian (plan_mode)
+    p.write_text("ubicacion: {latitud: 0, longitud: 0}\nrecordatorios: {listas: [Compra, Casa]}\nmenu: {modo: recetario}\n",
+                 encoding="utf-8")
     monkeypatch.setattr(config, "CONFIG_PATH", p)
     config.load.cache_clear()
     yield p
@@ -24,8 +27,9 @@ def test_recipes_are_well_formed():
     ids = [r["id"] for r in menu.recetario()["recetas"]]
     assert len(ids) == len(set(ids))
     for r in menu.recetario()["recetas"]:
-        assert r.get("comida") or r.get("cena"), r["id"]
-        assert r["grupo"] in set(menu.COMIDAS) | set(menu.CENAS), r["id"]
+        assert any(r.get(t) for t in menu.TOMAS), r["id"]
+        assert r["grupo"] in set(menu.COMIDAS) | set(menu.CENAS) | menu.GRUPOS_TOMAS, r["id"]
+        assert (r["grupo"] in menu.GRUPOS_TOMAS) == (not (r.get("comida") or r.get("cena"))), r["id"]
         for ing in r["ingredientes"]:
             if menu.norm(ing["nombre"]) in basics:
                 continue
@@ -78,7 +82,7 @@ def test_amounts_read_like_a_shopping_list():
 
 
 def test_more_people_scale_the_quantities(cfg):
-    cfg.write_text("ubicacion: {latitud: 0, longitud: 0}\nmenu: {personas: 3}\n", encoding="utf-8")
+    cfg.write_text("ubicacion: {latitud: 0, longitud: 0}\nmenu: {personas: 3, modo: recetario}\n", encoding="utf-8")
     config.load.cache_clear()
     dish = next(d["comida"] for d in menu.plan(date(2026, 10, 26)) if d["comida"]["id"])
     recipe = next(r for r in menu.recetario()["recetas"] if r["id"] == dish["id"])
@@ -193,6 +197,71 @@ def test_swap_endpoint(client):
     r = client.post("/api/menu/cambiar", json={"fecha": fecha, "momento": "cena"})
     assert r.status_code == 200 and r.json()["dias"][-1]["cena"]["id"] != before
     assert client.get("/api/menu").json()["dias"][-1]["cena"]["cambiado"] is True
-    assert client.post("/api/menu/cambiar", json={"fecha": fecha, "momento": "merienda"}).status_code == 400
+    assert client.post("/api/menu/cambiar", json={"fecha": fecha, "momento": "postre"}).status_code == 400
     assert client.post("/api/menu/cambiar", json={"fecha": "2020-01-01", "momento": "cena"}).status_code == 400
     assert client.post("/api/menu/cambiar", json={"fecha": "ayer"}).status_code == 400
+
+
+# ---------- Planes nutricionales por turnos (modo por defecto) ----------
+
+@pytest.fixture
+def plan_mode(cfg):
+    cfg.write_text("ubicacion: {latitud: 0, longitud: 0}\nrecordatorios: {listas: [Compra, Casa]}\n", encoding="utf-8")
+    config.load.cache_clear()
+    assert menu.mode() == "planes"
+    return cfg
+
+
+def test_every_plan_cell_is_a_recipe_of_its_meal():
+    by_id = {r["id"]: r for r in menu.recetario()["recetas"]}
+    plans = menu.planes()["planes"]
+    assert [p["nombre"] for p in plans] == ["Plan del 23 de enero", "Plan del 27 de febrero"]
+    for p in plans:
+        assert len(p["dias"]) == 7
+        for day in p["dias"]:
+            assert set(day) == set(menu.TOMAS), (p["nombre"], day)
+            for toma, rid in day.items():
+                if rid != menu.LIBRE:
+                    assert by_id[rid].get(toma), (p["nombre"], toma, rid)  # p. ej. un desayuno en el desayuno
+
+
+def test_plans_alternate_week_by_week(plan_mode):
+    names = [menu.week_plan(date(2026, 11, 23) + timedelta(weeks=i))["nombre"] for i in range(4)]
+    assert names == ["Plan del 23 de enero", "Plan del 27 de febrero"] * 2
+    assert menu.week_plan(date(2026, 11, 26))["nombre"] == "Plan del 23 de enero"  # cualquier día de la semana
+    days = menu.plan(date(2026, 11, 23))
+    assert days[0]["comida"]["nombre"] == "Brócoli con huevo cocido y taquitos de pavo"
+    assert days[0]["desayuno"]["id"] == "plan-desayuno-pavo" and days[6]["cena"]["id"] == "plan-revuelto-gambas-champinones"
+    feb = menu.plan(date(2026, 11, 30))
+    assert feb[5]["cena"]["libre"] and feb[5]["cena"]["ingredientes"] == []   # sábado: cena libre
+    assert feb[1]["comida"]["nombre"] == "Lacón con pimentón, patatas y espárragos blancos"
+
+
+def test_plan_start_can_be_moved_in_config(plan_mode):
+    plan_mode.write_text("ubicacion: {latitud: 0, longitud: 0}\nmenu: {planes_desde: '2026-11-30'}\n", encoding="utf-8")
+    config.load.cache_clear()
+    assert menu.week_plan(date(2026, 11, 23))["nombre"] == "Plan del 27 de febrero"
+
+
+def test_plan_shopping_includes_every_meal_but_not_basics(plan_mode):
+    days = menu.plan(date(2026, 11, 23))
+    items = {i["nombre"]: i for s in menu.shopping(days) for i in s["items"]}
+    assert items["Leche semidesnatada"]["cantidad"] == 400 * 7                     # desayuno de cada día
+    assert items["Yogur de proteínas stracciatella"]["cantidad"] == 2 * 4          # media mañana, 4 días
+    assert items["Lomo embuchado"]["cantidad"] == 40 * 4                            # merienda, 4 días
+    assert "Café" not in items                                                      # de la despensa
+    view = menu.week_view(date(2026, 11, 23), menu.Store(Path("/nonexistent/menu.json")), [])
+    assert view["plan"] == "Plan del 23 de enero" and view["modo"] == "planes"
+    assert view["tomas"] == menu.TOMAS
+
+
+def test_swapping_in_a_plan_week(plan_mode, tmp_path):
+    s = menu.Store(tmp_path / "menu.json")
+    sat = date(2026, 12, 5)  # sábado de la semana del plan de febrero
+    assert s.swap(sat, "cena") is False                         # la cena libre no se cambia
+    assert s.swap(sat, "merienda") is True                      # un tentempié por otro
+    day = next(d for d in s.plan(sat) if d["fecha"] == "2026-12-05")
+    assert day["merienda"]["grupo"] == "tentempie" and day["merienda"]["id"] != "plan-griego-o-cafe"
+    assert day["merienda"]["cambiado"] is True
+    assert s.swap(sat, "comida") is True                        # la comida, por otra de su grupo (pescado)
+    assert next(d for d in s.plan(sat) if d["fecha"] == "2026-12-05")["comida"]["grupo"] == "pescado"

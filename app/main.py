@@ -381,7 +381,7 @@ async def menu_swap(request: Request):
     except (ValueError, KeyError, TypeError, AttributeError):
         raise HTTPException(400, "Se esperaba {fecha, momento}")
     today = datetime.now(config.zone()).date()
-    if meal not in ("comida", "cena") or not 0 <= (menu.monday(fecha) - menu.monday(today)).days <= 7:
+    if meal not in menu.TOMAS or not 0 <= (menu.monday(fecha) - menu.monday(today)).days <= 7:
         raise HTTPException(400, "Solo la comida o la cena de esta semana o la siguiente")
     if not state["menu"].swap(fecha, meal):
         raise HTTPException(409, "No hay otro plato de ese tipo esta semana")
