@@ -9,6 +9,11 @@ GET  /api/tv              → canales de la pestaña TV
 GET  /api/tv/hls?u=…&s=…  → intermediario de vídeo: solo direcciones firmadas por el panel (?k=… si llevan la clave IPTV)
 GET  /api/tv/iptv         → «Mi lista»: grupos y canales en directo de la lista IPTV privada
 GET  /api/tv/iptv/{id}    → la emisión de un canal de «Mi lista» (sin que su dirección con la clave salga de aquí)
+GET  /api/cocina          → temporizadores y estado del fogón (docs/COCINA.md)
+POST /api/cocina/temporizadores            → nuevo temporizador {minutos, nombre}
+POST /api/cocina/temporizadores/{id}/sumar → suma minutos {minutos}
+DELETE /api/cocina/temporizadores/{id}     → lo quita (o lo para si está sonando)
+POST /api/cocina/fogon/visto               → la tablet deja de sonar por el aviso actual del fogón
 POST /api/copias/ok       → el stack «copias» avisa de que la copia de seguridad ha terminado (X-Panel-Token)
 POST /api/menu/cambiar    → cambia la comida o la cena de un día por otro plato del mismo tipo
 POST /api/menu/compra     → pasa un ingrediente del menú a la compra (o lo quita si el Atajo aún no lo ha recogido)
@@ -35,7 +40,7 @@ from fastapi.staticfiles import StaticFiles
 
 import asyncio
 
-from . import aire, avisos, calefaccion, calendarios, config, copias, iptv, tv, demo, energy, house, menu, reminders, shelly, sources
+from . import aire, avisos, calefaccion, calendarios, cocina, config, copias, iptv, tv, demo, energy, house, menu, reminders, shelly, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -94,7 +99,11 @@ async def lifespan(_: FastAPI):
         return (await state["prices"].get())["data"] or []
     state["shelly"] = shelly.Sender(client, _prices)
     task = asyncio.create_task(state["shelly"].run()) if shelly.url() and not DEMO else None
+    # Temporizadores y fogón olvidado: cada 30 s, también con la tablet bloqueada (en la demo, sin Home Assistant)
+    state["kitchen"] = cocina.Kitchen(None if DEMO else ha)
+    kitchen_task = asyncio.create_task(state["kitchen"].run())
     yield
+    kitchen_task.cancel()
     if task:
         task.cancel()
     await client.aclose()
@@ -168,7 +177,7 @@ async def _alerts() -> list[dict]:
                         extra=(await state["extra"].get())["fuentes"],
                         lists=state["reminders"].view(config.reminder_lists()),
                         shelly=state["shelly"].status, backups=state["backups"].status(),
-                        iptv=state["iptv"].status())
+                        iptv=state["iptv"].status(), kitchen=state["kitchen"].health())
 
 
 @app.get("/api/usuario/{user_id}")
@@ -227,6 +236,7 @@ async def health():
     out["shelly_tarifa"] = state["shelly"].status
     out["copias"] = state["backups"].status()
     out["tv_mi_lista"] = state["iptv"].status()
+    out["cocina"] = state["kitchen"].health()
     out["avisos"] = await _alerts()
     return out
 
@@ -321,6 +331,46 @@ async def _tv_send(u: str):
         finally:
             await body.aclose()
     return StreamingResponse(chunks(), media_type=ctype, headers=headers)
+
+
+@app.get("/api/cocina")
+async def kitchen_view():
+    return state["kitchen"].view()
+
+
+@app.post("/api/cocina/temporizadores")
+async def kitchen_add_timer(body: dict):
+    try:
+        state["kitchen"].add_timer(float(body.get("minutos")), body.get("nombre"))
+    except (TypeError, ValueError) as e:
+        raise HTTPException(400, str(e) or "Se esperaba {minutos, nombre}")
+    return state["kitchen"].view()
+
+
+@app.post("/api/cocina/temporizadores/{timer_id}/sumar")
+async def kitchen_add_time(timer_id: str, body: dict):
+    try:
+        state["kitchen"].add_time(timer_id, float(body.get("minutos", 1)))
+    except KeyError:
+        raise HTTPException(404, "No existe ese temporizador")
+    except (TypeError, ValueError) as e:
+        raise HTTPException(400, str(e))
+    return state["kitchen"].view()
+
+
+@app.delete("/api/cocina/temporizadores/{timer_id}")
+async def kitchen_remove_timer(timer_id: str):
+    try:
+        state["kitchen"].remove_timer(timer_id)
+    except (KeyError, ValueError):
+        raise HTTPException(404, "No existe ese temporizador")
+    return state["kitchen"].view()
+
+
+@app.post("/api/cocina/fogon/visto")
+async def kitchen_seen():
+    state["kitchen"].mark_seen()
+    return state["kitchen"].view()
 
 
 @app.post("/api/copias/ok")
