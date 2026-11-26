@@ -15,7 +15,8 @@ IPTV_CADUCA_DIAS = 10
 
 
 def build(now: datetime, *, sources: dict[str, dict], extra: dict[str, dict], lists: list[dict], shelly: dict,
-          backups: dict | None = None, iptv: dict | None = None, kitchen: dict | None = None) -> list[dict]:
+          backups: dict | None = None, iptv: dict | None = None, kitchen: dict | None = None,
+          podcasts: dict | None = None) -> list[dict]:
     """`sources`: bloques de caché por clave; `extra`: fuentes de los calendarios extra; `lists`: las de
     Recordatorios; `shelly`: el estado del envío de la tarifa; `iptv`: el de «Mi lista» de la pestaña TV."""
     out = []
@@ -47,6 +48,8 @@ def build(now: datetime, *, sources: dict[str, dict], extra: dict[str, dict], li
                                                          "«Cocina» de consumo): no hay aviso de fogón olvidado."})
         if kitchen.get("error_anuncio"):
             out.append({"id": "cocina:echo", "texto": f"El Echo no anuncia los avisos de la cocina: {kitchen['error_anuncio'].splitlines()[0]}"})
+    if podcasts and podcasts.get("configurado") and podcasts.get("error"):
+        out.append({"id": "podcasts", "texto": f"Podcasts: {podcasts['error']}"})
     if iptv and iptv.get("configurada"):
         if iptv.get("error"):
             out.append({"id": "iptv", "texto": f"TV: {iptv['error']}"})

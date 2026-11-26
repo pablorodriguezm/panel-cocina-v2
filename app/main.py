@@ -9,6 +9,10 @@ GET  /api/tv              → canales de la pestaña TV
 GET  /api/tv/hls?u=…&s=…  → intermediario de vídeo: solo direcciones firmadas por el panel (?k=… si llevan la clave IPTV)
 GET  /api/tv/iptv         → «Mi lista»: grupos y canales en directo de la lista IPTV privada
 GET  /api/tv/iptv/{id}    → la emisión de un canal de «Mi lista» (sin que su dirección con la clave salga de aquí)
+GET  /api/podcasts        → podcasts de Overcast: «para seguir» y tus podcasts (docs/PODCASTS.md)
+GET  /api/podcasts/podcast?ruta=…  → capítulos de un podcast
+GET  /api/podcasts/episodio/{id}   → audio y por dónde ibas de un capítulo
+POST /api/podcasts/progreso        → guarda en Overcast por dónde vas {id, segundos, terminado}
 GET  /api/cocina          → temporizadores y estado del fogón (docs/COCINA.md)
 POST /api/cocina/temporizadores            → nuevo temporizador {minutos, nombre}
 POST /api/cocina/temporizadores/{id}/sumar → suma minutos {minutos}
@@ -40,7 +44,7 @@ from fastapi.staticfiles import StaticFiles
 
 import asyncio
 
-from . import aire, avisos, calefaccion, calendarios, cocina, config, copias, iptv, tv, demo, energy, house, menu, reminders, shelly, sources
+from . import aire, avisos, calefaccion, calendarios, cocina, config, copias, iptv, podcasts, tv, demo, energy, house, menu, reminders, shelly, sources
 from .cache import Cached
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -70,6 +74,7 @@ async def lifespan(_: FastAPI):
     state["backups"] = copias.Store()
     state["tv"] = tv.TV(client)
     state["iptv"] = iptv.IPTV(client, state["tv"])
+    state["podcasts"] = podcasts.Overcast()
     if DEMO and not state["reminders"].lists:
         state["reminders"].lists = demo.reminders()
     state["car"] = Cached("coche", 2 * 60, src.car if src else lambda: sources.car(ha))
@@ -177,7 +182,8 @@ async def _alerts() -> list[dict]:
                         extra=(await state["extra"].get())["fuentes"],
                         lists=state["reminders"].view(config.reminder_lists()),
                         shelly=state["shelly"].status, backups=state["backups"].status(),
-                        iptv=state["iptv"].status(), kitchen=state["kitchen"].health())
+                        iptv=state["iptv"].status(), kitchen=state["kitchen"].health(),
+                        podcasts=state["podcasts"].status())
 
 
 @app.get("/api/usuario/{user_id}")
@@ -237,6 +243,7 @@ async def health():
     out["copias"] = state["backups"].status()
     out["tv_mi_lista"] = state["iptv"].status()
     out["cocina"] = state["kitchen"].health()
+    out["podcasts"] = state["podcasts"].status()
     out["avisos"] = await _alerts()
     return out
 
@@ -264,7 +271,56 @@ async def push_reminders(request: Request, x_panel_token: str | None = Header(de
 async def tv_channels():
     """Los canales de la pestaña TV, con su emisión (a través del intermediario), su reproductor incrustado o su web."""
     await state["tv"].refresh()
-    return {"canales": state["tv"].channels(), "error": state["tv"].list_error, "mi_lista": state["iptv"].configured}
+    return {"canales": state["tv"].channels(), "error": state["tv"].list_error, "mi_lista": state["iptv"].configured,
+            "podcasts": state["podcasts"].configured}
+
+
+def _podcasts():
+    if not state["podcasts"].configured:
+        raise HTTPException(404, "Sin podcasts: faltan OVERCAST_EMAIL y OVERCAST_CLAVE")
+    return state["podcasts"]
+
+
+@app.get("/api/podcasts")
+async def podcasts_library():
+    return await _podcasts().library()
+
+
+@app.get("/api/podcasts/podcast")
+async def podcasts_feed(ruta: str):
+    try:
+        return {"ruta": ruta, "capitulos": await _podcasts().feed(ruta)}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except (httpx.HTTPError, podcasts.NotLoggedIn) as e:
+        state["podcasts"]._fail(e)
+        raise HTTPException(502, state["podcasts"].error)
+
+
+@app.get("/api/podcasts/episodio/{episode_id}")
+async def podcasts_episode(episode_id: str):
+    try:
+        return await _podcasts().episode(episode_id)
+    except ValueError as e:
+        state["podcasts"]._fail(e)
+        raise HTTPException(400 if "desconocido" in str(e) else 502, str(e))
+    except (httpx.HTTPError, podcasts.NotLoggedIn) as e:
+        state["podcasts"]._fail(e)
+        raise HTTPException(502, state["podcasts"].error)
+
+
+@app.post("/api/podcasts/progreso")
+async def podcasts_progress(body: dict):
+    try:
+        v = await _podcasts().progress(str(body.get("id")), float(body.get("segundos") or 0), bool(body.get("terminado")))
+    except KeyError:
+        raise HTTPException(404, "Ese capítulo no se ha abierto en el panel")
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Se esperaba {id, segundos, terminado}")
+    except (httpx.HTTPError, podcasts.NotLoggedIn) as e:
+        state["podcasts"]._fail(e)
+        raise HTTPException(502, state["podcasts"].error)
+    return {"ok": True, "version": v}
 
 
 @app.get("/api/tv/iptv")
