@@ -147,9 +147,12 @@
   <!-- Temporizadores de cocina y aviso de fogón u horno olvidado (docs/COCINA.md): también sobre el bloqueo -->
   <div class="kitchen" id="kitchen">
     <div class="timers" id="timers"></div>
+    <button class="pod-pill" id="pod-pill" hidden aria-label="Podcast"></button>
     <button class="timer-fab" id="timer-fab" aria-label="Temporizadores">⏲️</button>
   </div>
   <div class="k-banner" id="k-banner" hidden></div>
+  <!-- Podcasts: el audio va fuera de las vistas para que siga sonando al cambiar de pestaña (docs/PODCASTS.md) -->
+  <audio id="pod-audio" preload="none"></audio>
   <div class="k-alert" id="k-alert" hidden></div>
 
   <script src="vendor/hls.min.js" defer></script>
