@@ -27,6 +27,7 @@ import httpx
 
 BASE = "https://overcast.fm"
 DATA_PATH = Path(os.environ.get("PANEL_DATA", "/data")) / "overcast.json"
+PINS_PATH = Path(os.environ.get("PANEL_DATA", "/data")) / "podcasts-fijados.json"  # los podcasts fijados arriba
 TIMEOUT = httpx.Timeout(20.0, connect=8.0)
 USER_AGENT = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
 FINISHED = 0x7FFFFFFF          # lo que manda su reproductor al acabar un capítulo
@@ -210,6 +211,11 @@ class Overcast:
         self.feeds: dict[str, tuple[float, list]] = {}
         self.episodes: dict[str, dict] = {}       # id → datos de su página (para guardar el progreso)
         self.error: str | None = None
+        self.pins_path = self.path.with_name(PINS_PATH.name) if path else PINS_PATH
+        try:
+            self.pins: list[str] = [p for p in json.loads(self.pins_path.read_text(encoding="utf-8")) if FEED_PATH.match(p)]
+        except (OSError, ValueError, TypeError):
+            self.pins = []
         self.last_ok: float | None = None
         try:
             saved = json.loads(self.path.read_text(encoding="utf-8"))
@@ -269,7 +275,19 @@ class Overcast:
                 self._ok()
             except (httpx.HTTPError, NotLoggedIn, ValueError) as e:
                 self._fail(e)
-        return {**(self.home or {"en_curso": [], "podcasts": []}), "error": self.error}
+        return {**(self.home or {"en_curso": [], "podcasts": []}), "fijados": self.pins, "error": self.error}
+
+    def pin(self, path: str, pinned: bool) -> list[str]:
+        """Fija un podcast arriba de la lista (al final de los fijados) o lo quita. Se ve igual en todos los aparatos."""
+        if not FEED_PATH.match(path):
+            raise ValueError("podcast desconocido")
+        self.pins = [p for p in self.pins if p != path] + ([path] if pinned else [])
+        try:
+            self.pins_path.parent.mkdir(parents=True, exist_ok=True)
+            self.pins_path.write_text(json.dumps(self.pins), encoding="utf-8")
+        except OSError as e:
+            LOG.warning("No se pueden guardar los podcasts fijados: %s", e)
+        return self.pins
 
     async def feed(self, path: str) -> list[dict]:
         if not FEED_PATH.match(path):
