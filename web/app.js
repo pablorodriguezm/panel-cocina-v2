@@ -592,16 +592,27 @@ function podListHTML() {
   const epBtn = (e, sub) => `<button class="tv-chan pod-ep${state.pod.ep?.id === e.id ? " on" : ""}" data-ep="${esc(e.id)}">
       ${e.arte ? `<img class="tv-logo" src="${esc(e.arte)}" alt="" loading="lazy" onerror="this.remove()">` : ""}
       <b>${e.nuevo ? "● " : ""}${esc(e.titulo)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</button>`;
+  const pins = lib?.fijados || [];
   if (f) {
-    return `<button class="pod-back" data-back>‹ Mis podcasts</button><p class="sub-h">${esc(f.titulo)}</p>
+    const on = pins.includes(f.ruta);
+    return `<div class="pod-head"><button class="pod-back" data-back>‹ Mis podcasts</button>
+        <button class="pod-pin-txt${on ? " on" : ""}" data-pin="${esc(f.ruta)}">📌 ${on ? "Quitar de arriba" : "Fijar arriba"}</button></div>
+      <p class="sub-h">${esc(f.titulo)}</p>
       <div class="scroll tv-chans">${f.capitulos ? f.capitulos.map((e) => epBtn(e, e.info)).join("") || `<p class="empty">Sin capítulos.</p>`
         : `<p class="empty">Cargando…</p>`}</div>`;
   }
   if (!lib) return `<p class="empty">${esc(state.pod.error || "Cargando tus podcasts…")}</p>`;
+  // Un podcast con su botón 📌 (fijar arriba o quitar)
+  const feedRow = (p) => `<div class="pod-row"><button class="tv-chan pod-ep" data-feed="${esc(p.ruta)}">
+      ${p.arte ? `<img class="tv-logo" src="${esc(p.arte)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<b>${esc(p.titulo)}</b></button>
+      <button class="pod-pin${pins.includes(p.ruta) ? " on" : ""}" data-pin="${esc(p.ruta)}"
+        aria-label="${pins.includes(p.ruta) ? "Quitar de arriba" : "Fijar arriba"}">📌</button></div>`;
+  const pinned = pins.map((r) => lib.podcasts.find((p) => p.ruta === r)).filter(Boolean);
+  const rest = lib.podcasts.filter((p) => !pins.includes(p.ruta));
   return `<div class="scroll tv-chans">${lib.error ? `<p class="empty">${esc(lib.error)}</p>` : ""}
+    ${pinned.length ? `<p class="sub-h">📌 Fijados</p>${pinned.map(feedRow).join("")}` : ""}
     ${lib.en_curso.length ? `<p class="sub-h">Para seguir</p>${lib.en_curso.map((e) => epBtn(e, [e.podcast, e.info].filter(Boolean).join(" · "))).join("")}` : ""}
-    ${lib.podcasts.length ? `<p class="sub-h">Mis podcasts</p>${lib.podcasts.map((p) => `<button class="tv-chan pod-ep" data-feed="${esc(p.ruta)}">
-      ${p.arte ? `<img class="tv-logo" src="${esc(p.arte)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<b>${esc(p.titulo)}</b></button>`).join("")}` : ""}</div>`;
+    ${rest.length ? `<p class="sub-h">Mis podcasts</p>${rest.map(feedRow).join("")}` : ""}</div>`;
 }
 
 function bindPodList() {
@@ -609,6 +620,22 @@ function bindPodList() {
   root.querySelectorAll("[data-ep]").forEach((b) => b.addEventListener("click", () => openEpisode(b.dataset.ep)));
   root.querySelectorAll("[data-feed]").forEach((b) => b.addEventListener("click", () => openFeed(b.dataset.feed, b.innerText.trim())));
   root.querySelector("[data-back]")?.addEventListener("click", () => { state.pod.feed = null; renderTV(); });
+  root.querySelectorAll("[data-pin]").forEach((b) => b.addEventListener("click", () => pinPodcast(b.dataset.pin)));
+}
+
+// Fija un podcast arriba de la lista o lo quita (se guarda en el servidor: igual en la tablet y en el móvil)
+async function pinPodcast(ruta) {
+  const lib = state.pod.lib;
+  if (!lib) return;
+  const pinned = !(lib.fijados || []).includes(ruta);
+  lib.fijados = (lib.fijados || []).filter((r) => r !== ruta).concat(pinned ? [ruta] : []);
+  renderTV();
+  try {
+    const r = await fetch("/api/podcasts/fijar", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ruta, fijado: pinned }) });
+    if (r.ok) lib.fijados = (await r.json()).fijados;
+  } catch (e) { console.warn(e); }
+  renderTV();
 }
 
 async function openFeed(ruta, titulo) {

@@ -23,8 +23,11 @@ Overcast no tiene API pública y no deja mostrar su web dentro de otra página: 
 
 ## En la pantalla
 
-- **Lista:** «Para seguir» y «Mis podcasts». Al tocar un podcast salen sus capítulos (● los nuevos) y «‹ Mis podcasts»
-  para volver.
+- **Lista:** «📌 Fijados», «Para seguir» y «Mis podcasts». Al tocar un podcast salen sus capítulos (● los nuevos) y
+  «‹ Mis podcasts» para volver.
+- **Fijar arriba:** el botón 📌 de cada podcast (o «📌 Fijar arriba» en sus capítulos) lo pone en «Fijados», arriba
+  del todo, en el orden en que se fijan; tocándolo otra vez se quita. Se guarda en el servidor
+  (`/data/podcasts-fijados.json`), así que se ve igual en la tablet y en el móvil.
 - **Reproductor:** carátula, barra para moverse, −15 s, reproducir o pausar, +30 s y la velocidad (empieza en la que
   tengas en Overcast).
 - **Sigue sonando al cambiar de vista.** Abajo, junto al botón ⏲️, sale una pastilla 🎧 con el capítulo para pausar o
