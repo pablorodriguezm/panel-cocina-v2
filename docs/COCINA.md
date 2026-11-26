@@ -12,7 +12,7 @@ Funcionan también con la pantalla bloqueada, y el Echo de la cocina los anuncia
 - **Cuenta atrás:** cada temporizador sale como una pastilla con lo que queda. Al tocarla se suman 1, 5 o 10 min o
   se quita.
 - **Al terminar:**
-  - la tablet pita cada pocos segundos y enseña «¡Listo!» con **+1 min** y **Parar**;
+  - la tablet suena (ráfagas de pitidos a dos tonos) cada pocos segundos y enseña «¡Listo!» con **+1 min** y **Parar**;
   - el Echo anuncia «El temporizador Pasta ha terminado»;
   - si nadie lo para, desaparece solo a los 15 minutos.
 - **Dónde viven:** en el servidor (`/data/cocina.json`). Los dos dispositivos ven los mismos y no se pierden si se
@@ -30,7 +30,7 @@ la vista Consumo, o `cocina.potencia`).
 | Tiempo encendido | Qué pasa |
 |---|---|
 | 1 h | **Aviso:** una franja amarilla arriba («La placa o el horno lleva 1 h encendido») con dos pitidos y anuncio del Echo |
-| 2 h | **Aviso fuerte:** a pantalla completa, pitando hasta que se toque «Ya lo miro», y anuncio del Echo |
+| 2 h | **Aviso fuerte:** a pantalla completa, con una sirena hasta que se toque «Ya lo miro», y anuncio del Echo |
 | De 0:00 a 6:00 | Aviso fuerte a los **15 min** |
 
 - **Con un temporizador del panel en marcha no avisa:** se da por hecho que alguien está cocinando. Si al terminar el
@@ -76,6 +76,7 @@ cocina:
 | Avisos: «Sin el sensor de la cocina…» | El sensor no existe o no responde | Revisar `cocina.potencia` o el aparato «Cocina» de `consumo` |
 | Avisos: «El Echo no anuncia…» | El servicio no existe (otra integración de Alexa) o el token de HA no puede usarlo | Probar el servicio en HA → Herramientas para desarrolladores → Acciones y ajustar `cocina.anuncio` |
 | La tablet no pita | El navegador solo deja sonar tras un primer toque | Tocar la pantalla una vez (al entrar con el avatar ya vale); en Fully Kiosk, activar *Autoplay Audio* |
+| La tablet pita bajo | Las alarmas usan el volumen **multimedia** de Android, no el de las notificaciones | Subir el volumen multimedia de la tablet (en Fully Kiosk se puede fijar al arrancar, en sus ajustes de sonido) |
 | Avisa con un guiso largo | El guiso pasa de 1 h | Poner un temporizador del panel con lo que le queda: mientras corra, no avisa |
 
 Estado en `/api/salud` → `cocina`: el sensor, el último anuncio, el último error y el nivel de aviso actual.

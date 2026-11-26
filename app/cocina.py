@@ -117,7 +117,7 @@ class Kitchen:
         now = self.clock()
         name = (str(name or "").strip() or f"{_minutes_text(minutes)}")[:30]
         t = {"id": secrets.token_hex(4), "nombre": name, "inicio": now, "fin": now + minutes * 60,
-             "duracion_s": round(minutes * 60), "acabado": False}
+             "duracion_s": round(minutes * 60), "acabado": False, "anunciado": False}
         self.timers.append(t)
         self._save()
         return t
@@ -136,6 +136,7 @@ class Kitchen:
         now = self.clock()
         t["fin"] = (now if t["acabado"] else t["fin"]) + minutes * 60
         t["acabado"] = False
+        t["anunciado"] = False
         t.pop("acabado_t", None)
         self._save()
         return t
@@ -148,7 +149,8 @@ class Kitchen:
         return any(not t["acabado"] for t in self.timers)
 
     def tick_timers(self) -> list[dict]:
-        """Marca los que han terminado (devuelve esos, para anunciarlos) y quita los acabados hace rato."""
+        """Marca los que han terminado y quita los acabados hace rato. Lo llaman también las consultas de la tablet,
+        así que no sirve para saber qué anunciar: para eso está «anunciado» (ver step)."""
         now = self.clock()
         done = []
         for t in self.timers:
@@ -231,7 +233,14 @@ class Kitchen:
 
     async def step(self) -> None:
         """Una vuelta: temporizadores, potencia de la cocina y anuncios."""
-        for t in self.tick_timers():
+        self.tick_timers()
+        # Los acabados sin anunciar, los haya marcado esta vuelta o una consulta de la tablet
+        pending = [t for t in self.timers if t["acabado"] and not t.get("anunciado")]
+        for t in pending:
+            t["anunciado"] = True
+        if pending:
+            self._save()
+        for t in pending:
             await self.announce(f"El temporizador {t['nombre']} ha terminado.")
         entity = power_entity()
         self.status["sensor"] = entity
