@@ -53,6 +53,11 @@ tv:
 
 `tdt` es el nombre exacto del canal en TDTChannels; `urls` fija las direcciones sin usar la lista.
 
+## Podcasts
+
+Con `OVERCAST_EMAIL` y `OVERCAST_CLAVE`, la lista tiene una pestaña más, **Podcasts**: tu cuenta de Overcast con el
+progreso sincronizado. Ver [PODCASTS.md](PODCASTS.md).
+
 ## Mi lista (IPTV privada)
 
 Si en el stack de Portainer están `IPTV_SERVIDOR` (`http://servidor:puerto`), `IPTV_USUARIO` e `IPTV_CLAVE` (copia

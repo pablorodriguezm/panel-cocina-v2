@@ -45,7 +45,8 @@ Stacks → **Add stack** → **Repository**:
   (fine-grained, solo este repositorio, permiso *Contents: Read*).
 - **Environment variables:** `HA_TOKEN`, `PANEL_TOKEN`, `PANEL_PORT=8090` y, opcionales, `SHELLY_TARIFA_URL`
   (precio de la luz para la app de Shelly, ver [SHELLY.md](SHELLY.md)) e `IPTV_SERVIDOR`, `IPTV_USUARIO` e
-  `IPTV_CLAVE` («Mi lista» de la pestaña TV, ver [TV.md](TV.md)).
+  `IPTV_CLAVE` («Mi lista» de la pestaña TV, ver [TV.md](TV.md)), y `OVERCAST_EMAIL` y `OVERCAST_CLAVE` (podcasts,
+  ver [PODCASTS.md](PODCASTS.md)).
 - **GitOps updates:** activado, **Polling** cada 5 minutos.
 
 Portainer CE no tiene «Re-pull image» (es de la edición Business), así que con una etiqueta fija como `latest`
