@@ -447,6 +447,47 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .charging .cell .lvl { animation: none; }
 }
 
+/* --- Cocina: temporizadores y fogón olvidado (encima de todo, también del bloqueo) --- */
+/* En la tablet, el botón va en el hueco de la barra entre «Dormir» y la hora; las cuentas atrás, a su izquierda */
+.kitchen { position: fixed; right: 19px; bottom: 118px; z-index: 8; display: flex; align-items: flex-end; gap: 8px;
+  pointer-events: none; }
+.timer-fab, .timer-pill { pointer-events: auto; }  /* el resto del contenedor deja tocar lo de debajo */
+.timer-fab { width: 54px; height: 54px; border-radius: 50%; font-size: 26px; background: var(--card); flex: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .18), 0 0 0 1px var(--line); }
+.timers { display: flex; gap: 8px; flex-wrap: wrap-reverse; justify-content: flex-end; max-width: min(60vw, 640px); }
+.timer-pill { display: flex; flex-direction: column; align-items: flex-start; padding: 8px 14px; border-radius: 16px;
+  background: #E8604C; color: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); min-width: 92px; text-align: left; }
+.timer-pill b { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.timer-pill span { font-size: 12px; opacity: .9; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.timer-pill.done { background: #D9483B; animation: k-pulse 1s ease-in-out infinite; }
+@keyframes k-pulse { 50% { transform: scale(1.06); } }
+.k-btn { padding: 10px 16px; border-radius: 999px; font-weight: 600; background: var(--highlight); color: var(--ink); white-space: nowrap; }
+.k-btn.main { background: #E8604C; color: #fff; }
+.k-banner { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 12; display: flex; align-items: center;
+  gap: 14px; padding: 10px 12px 10px 18px; border-radius: 999px; background: #F2B33D; color: #2B2116; font-size: 15px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .2); max-width: calc(100vw - 32px); }
+.k-alert { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px;
+  background: rgba(20, 16, 12, .6); }
+.k-card { width: min(560px, 100%); background: var(--card); border-radius: 26px; padding: 22px; display: flex;
+  flex-direction: column; gap: 14px; box-shadow: 0 0 0 3px #E8604C, 0 20px 60px rgba(0, 0, 0, .4); }
+.k-card.fire { box-shadow: 0 0 0 3px #D9483B, 0 20px 60px rgba(0, 0, 0, .4); }
+.k-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.k-row .k-ic { font-size: 40px; }
+.k-row .grow { flex: 1; min-width: 140px; }
+.k-row b { display: block; font-size: 24px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.k-row small { font-size: 15px; color: var(--ink-soft); }
+.t-names, .t-presets, .t-actions, .t-custom { white-space: normal; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.t-name { padding: 8px 14px; border-radius: 999px; background: var(--highlight); color: var(--ink); font-weight: 600; font-size: 14px; }
+.t-name.on { background: #E8604C; color: #fff; }
+.t-presets { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.t-preset { padding: 12px 0; border-radius: 14px; background: var(--highlight); color: var(--ink); font-size: 22px; font-weight: 700;
+  display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.t-preset small { font-size: 11px; font-weight: 500; color: var(--ink-soft); }
+.t-custom { align-items: center; }
+.t-custom input { width: 110px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--card);
+  color: var(--ink); font: inherit; font-size: 18px; -webkit-user-select: text; user-select: text; }
+.t-custom span { color: var(--ink-soft); }
+
 /* ===== Móvil y vertical =====
    La tablet (1280×800 en horizontal) no entra en ninguna de estas reglas: se ve como siempre.
    En vertical (iPhone, o la tablet girada) la barra va abajo y las vistas son una columna con scroll; en el
@@ -525,6 +566,15 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .avatar .face { width: 104px; height: 104px; font-size: 46px; }
 }
 
+/* Cocina en vertical: encima de la barra de abajo, a la derecha */
+@media (orientation: portrait) {
+  .kitchen { right: 14px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  /* En el bloqueo no hay barra y abajo están los avatares: arriba a la derecha */
+  body:has(#lock:not([hidden])) .kitchen { top: calc(14px + env(safe-area-inset-top, 0px)); bottom: auto; align-items: flex-start; }
+  .timers { max-width: calc(100vw - 100px); justify-content: flex-end; }
+  .t-presets { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
 /* iPhone en horizontal: barra a la derecha solo con iconos y vistas en dos columnas */
 @media (orientation: landscape) and (max-height: 500px) {
   :root { --gap: 10px; }
@@ -560,6 +610,13 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .avatars { gap: 16px; }
   .avatar .face { width: 88px; height: 88px; font-size: 38px; }
   .avatar .name { font-size: 18px; }
+  .kitchen { right: auto; left: max(12px, env(safe-area-inset-left, 0px)); bottom: 12px; flex-direction: row-reverse; }
+  .timer-fab { width: 46px; height: 46px; font-size: 22px; }
+  .timer-pill { padding: 6px 12px; min-width: 80px; }
+  .timer-pill b { font-size: 18px; }
+  .k-card { padding: 16px; gap: 10px; }
+  .k-row .k-ic { font-size: 30px; }
+  .modal-card { max-height: calc(100dvh - 24px); overflow-y: auto; }
 }
 
 /* En oscuro, los días pasados y las sombras se notan menos: un borde fino separa las tarjetas del fondo */

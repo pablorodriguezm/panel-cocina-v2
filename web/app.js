@@ -242,6 +242,7 @@ function setupRail() {
   });
   $("me").addEventListener("click", lock);
   $("alerts").addEventListener("click", openAlerts);
+  $("timer-fab").addEventListener("click", openTimers);
 }
 
 // ---------- Avisos de mantenimiento ----------
@@ -270,6 +271,163 @@ function resetIdle() {
   clearTimeout(state.idleTimer);
   // Con la tele puesta no se vuelve a la pantalla de bloqueo
   if (state.user) state.idleTimer = setTimeout(() => (state.tv.playing ? resetIdle() : lock()), state.idleMs);
+}
+
+// ---------- Cocina: temporizadores y fogón olvidado ----------
+
+const TIMER_PRESETS = [1, 3, 5, 8, 10, 12, 15, 20, 30, 45, 60, 90];
+const TIMER_NAMES = ["Pasta", "Arroz", "Huevos", "Horno", "Legumbres", "Verduras"];
+state.kitchen = { data: null, offset: 0, name: "", busy: false };
+
+const nowS = () => Date.now() / 1000 + state.kitchen.offset;
+const mmss = (s) => {
+  s = Math.max(0, Math.round(s));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${m}:${String(r).padStart(2, "0")}`;
+};
+
+async function loadKitchen() {
+  try {
+    const d = await getJSON("/api/cocina");
+    state.kitchen.offset = d.ahora - Date.now() / 1000;
+    state.kitchen.data = d;
+  } catch (e) { console.warn(e); }
+  renderKitchen();
+}
+
+async function kitchenCall(url, method = "POST", body = null) {
+  if (state.kitchen.busy) return;
+  state.kitchen.busy = true;
+  try {
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : null });
+    if (r.ok) {
+      const d = await r.json();
+      state.kitchen.offset = d.ahora - Date.now() / 1000;
+      state.kitchen.data = d;
+    }
+  } catch (e) { console.warn(e); }
+  state.kitchen.busy = false;
+  renderKitchen();
+}
+
+const startTimer = (minutos, nombre) => kitchenCall("/api/cocina/temporizadores", "POST", { minutos, nombre: nombre || null });
+const addTime = (id, minutos) => kitchenCall(`/api/cocina/temporizadores/${id}/sumar`, "POST", { minutos });
+const stopTimer = (id) => kitchenCall(`/api/cocina/temporizadores/${id}`, "DELETE");
+
+// Pitidos con WebAudio: el navegador solo deja sonar tras un primer toque, que siempre hay (el avatar)
+let audio;
+function beep(times = 3) {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === "suspended") audio.resume();
+    for (let i = 0; i < times; i++) {
+      const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * 0.35;
+      o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+      o.connect(g).connect(audio.destination);
+      o.start(t);
+      o.stop(t + 0.3);
+    }
+  } catch { /* sin audio */ }
+}
+document.addEventListener("pointerdown", () => { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch { /* sin audio */ } }, { passive: true });
+
+function renderKitchen() {
+  const d = state.kitchen.data;
+  const timers = d?.temporizadores || [];
+  $("timers").innerHTML = timers.map((t) => {
+    const left = t.acabado ? 0 : t.fin - nowS();
+    return `<button class="timer-pill${t.acabado || left <= 0 ? " done" : ""}" data-timer="${t.id}">
+      <b>${t.acabado || left <= 0 ? "¡Listo!" : mmss(left)}</b><span>${esc(t.nombre)}</span></button>`;
+  }).join("");
+  $("timers").querySelectorAll("[data-timer]").forEach((b) => b.addEventListener("click", () => openTimer(b.dataset.timer)));
+  renderKitchenAlert();
+}
+
+// Lo que tiene que sonar: un temporizador acabado o el aviso fuerte del fogón sin ver; el primer aviso, una franja
+function renderKitchenAlert() {
+  const d = state.kitchen.data;
+  const done = (d?.temporizadores || []).filter((t) => t.acabado);
+  const f = d?.fogon || {};
+  const strong = f.nivel === "fuerte" && !f.visto, soft = f.nivel === "aviso" && !f.visto;
+  const el = $("k-alert");
+  const hours = (m) => m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`;
+  if (done.length || strong) {
+    el.innerHTML = `<div class="k-card${strong && !done.length ? " fire" : ""}">${done.map((t) => `
+        <div class="k-row"><span class="k-ic">⏰</span><div class="grow"><b>${esc(t.nombre)}</b><small>¡Listo!</small></div>
+          <button class="k-btn" data-plus="${t.id}">+1 min</button><button class="k-btn main" data-stop="${t.id}">Parar</button></div>`).join("")}
+        ${strong ? `<div class="k-row"><span class="k-ic">🔥</span><div class="grow"><b>Placa u horno encendido</b>
+          <small>Lleva ${hours(f.minutos)} encendido${f.media_w ? ` · ${f.media_w} W de media` : ""}</small></div>
+          <button class="k-btn main" data-seen>Ya lo miro</button></div>` : ""}</div>`;
+    el.hidden = false;
+    el.querySelectorAll("[data-plus]").forEach((b) => b.addEventListener("click", () => addTime(b.dataset.plus, 1)));
+    el.querySelectorAll("[data-stop]").forEach((b) => b.addEventListener("click", () => stopTimer(b.dataset.stop)));
+    el.querySelector("[data-seen]")?.addEventListener("click", () => kitchenCall("/api/cocina/fogon/visto"));
+  } else {
+    el.hidden = true;
+  }
+  const banner = $("k-banner");
+  banner.hidden = !soft || strong;
+  if (soft) {
+    banner.innerHTML = `<span>🔥 La placa o el horno lleva <b>${hours(f.minutos)}</b> encendido</span><button class="k-btn" data-seen>Vale</button>`;
+    banner.querySelector("[data-seen]").addEventListener("click", () => kitchenCall("/api/cocina/fogon/visto"));
+  }
+  const key = `${done.map((t) => t.id).join(",")}|${strong}|${soft}`;
+  if ((done.length || strong) && key !== state.kitchen.ringing) beep(4);
+  else if (soft && key !== state.kitchen.ringing) beep(2);
+  state.kitchen.ringing = key;
+}
+
+// Mientras suene, se repite el pitido cada pocos segundos
+setInterval(() => {
+  const d = state.kitchen.data;
+  if (!d) return;
+  const ringing = d.temporizadores.some((t) => t.acabado) || (d.fogon.nivel === "fuerte" && !d.fogon.visto);
+  if (ringing) beep(3);
+}, 4000);
+
+function openTimers() {
+  $("modal").querySelector(".modal-card").setAttribute("style", "--event:#E8604C");
+  $("modal-cal").textContent = "TEMPORIZADOR";
+  $("modal-title").textContent = "¿Cuánto tiempo?";
+  $("modal-when").textContent = "Suena aquí y lo anuncia el Echo de la cocina";
+  const name = state.kitchen.name;
+  $("modal-extra").innerHTML = `<div class="t-names">${TIMER_NAMES.map((n) =>
+      `<button class="t-name${n === name ? " on" : ""}" data-name="${n}">${n}</button>`).join("")}</div>
+    <div class="t-presets">${TIMER_PRESETS.map((m) => `<button class="t-preset" data-min="${m}">${m < 60 ? m : m / 60 + " h"}<small>${m < 60 ? "min" : ""}</small></button>`).join("")}</div>
+    <form class="t-custom" id="t-custom"><input type="number" id="t-min" min="1" max="720" placeholder="Otro" inputmode="numeric">
+      <span>min</span><button class="k-btn main" type="submit">Empezar</button></form>`;
+  $("modal-extra").querySelectorAll("[data-name]").forEach((b) => b.addEventListener("click", () => {
+    state.kitchen.name = state.kitchen.name === b.dataset.name ? "" : b.dataset.name;
+    openTimers();
+  }));
+  $("modal-extra").querySelectorAll("[data-min]").forEach((b) => b.addEventListener("click", () => {
+    startTimer(+b.dataset.min, state.kitchen.name);
+    state.kitchen.name = "";
+    closeModal();
+  }));
+  $("t-custom").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const m = +$("t-min").value;
+    if (m > 0) { startTimer(m, state.kitchen.name); state.kitchen.name = ""; closeModal(); }
+  });
+  $("modal").hidden = false;
+}
+
+function openTimer(id) {
+  const t = (state.kitchen.data?.temporizadores || []).find((x) => x.id === id);
+  if (!t) return;
+  $("modal").querySelector(".modal-card").setAttribute("style", "--event:#E8604C");
+  $("modal-cal").textContent = "TEMPORIZADOR";
+  $("modal-title").textContent = t.nombre;
+  $("modal-when").textContent = t.acabado ? "¡Listo!" : `Quedan ${mmss(t.fin - nowS())} · acaba a las ${new Date((t.fin - state.kitchen.offset) * 1000).toLocaleTimeString(ES, { hour: "2-digit", minute: "2-digit" })}`;
+  $("modal-extra").innerHTML = `<div class="t-actions">${[1, 5, 10].map((m) => `<button class="k-btn" data-plus="${m}">+${m} min</button>`).join("")}
+    <button class="k-btn main" data-stop>${t.acabado ? "Parar" : "Quitar"}</button></div>`;
+  $("modal-extra").querySelectorAll("[data-plus]").forEach((b) => b.addEventListener("click", () => { addTime(id, +b.dataset.plus); closeModal(); }));
+  $("modal-extra").querySelector("[data-stop]").addEventListener("click", () => { stopTimer(id); closeModal(); });
+  $("modal").hidden = false;
 }
 
 // ---------- TV ----------
@@ -1258,6 +1416,10 @@ async function start() {
   setInterval(() => { if (state.user && state.view === "consumo") loadConsumption(); }, 15_000);
   setInterval(() => { loadHome(); if (state.user) loadTrips(); }, REFRESH_MS);
   setInterval(loadMenu, 30 * 60_000);  // cambia el lunes; lo pasado a la compra se recoge al tocar
+  // Temporizadores y fogón: cada 5 s (también con la pantalla bloqueada) y la cuenta atrás, cada segundo
+  loadKitchen();
+  setInterval(loadKitchen, 5_000);
+  setInterval(() => { if (state.kitchen.data?.temporizadores?.length) renderKitchen(); }, 1_000);
 }
 
 start();
