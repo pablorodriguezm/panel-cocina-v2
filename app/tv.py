@@ -9,6 +9,9 @@ Cada canal es de uno de estos tipos:
 - youtube: el directo de un canal de YouTube incrustado.
 - web: Mediaset prohíbe incrustar su reproductor; solo un botón para abrir su web.
 
+Pestaña «Podcasts»: la web de Overcast dentro del panel (tu catálogo y tu progreso, sincronizados con la app). El
+servidor comprueba si Overcast deja mostrar su web dentro de otra página; si no, la tablet ofrece abrirla aparte.
+
 El intermediario (`/api/tv/hls`) solo pide direcciones de las emisiones de la lista y de lo que esas listas m3u8
 enlazan (otras listas, segmentos y claves), y nunca a la red de casa: no sirve para pedir cualquier otra cosa. Cada
 dirección que da el panel va firmada (`?u=…&s=…`, HMAC con una clave guardada en /data), así que sigue valiendo tras
@@ -52,6 +55,32 @@ CANALES = [
     {"id": "clan", "nombre": "Clan", "tipo": "hls", "tdt": "Clan", "reserva": "https://ztnr.rtve.es/ztnr/5466990.m3u8"},
     {"id": "tvg", "nombre": "TVG", "tipo": "hls", "tdt": "TVG", "reserva": "https://crtvg-europa.flumotion.cloud/playlist_dvr.m3u8"},
 ]
+
+
+PODCASTS = {"nombre": "Overcast", "url": "https://overcast.fm/podcasts"}
+PODCAST_CHECK_S = 6 * 3600
+
+
+def podcasts_config() -> dict | None:
+    """La web de podcasts de la pestaña (por defecto Overcast). «tv.podcasts: false» la quita."""
+    c = (config.load().get("tv") or {}).get("podcasts") if isinstance(config.load().get("tv"), dict) else None
+    if c is False:
+        return None
+    return {**PODCASTS, **(c if isinstance(c, dict) else {})}
+
+
+def frame_policy(headers) -> tuple[bool, str | None]:
+    """¿Deja la web mostrarse dentro de otra página? Mira X-Frame-Options y frame-ancestors (CSP)."""
+    xfo = (headers.get("x-frame-options") or "").strip().lower()
+    if xfo in ("deny", "sameorigin") or xfo.startswith("allow-from"):
+        return False, f"X-Frame-Options: {xfo}"
+    for directive in (headers.get("content-security-policy") or "").split(";"):
+        parts = directive.strip().split()
+        if parts and parts[0].lower() == "frame-ancestors":
+            sources = [p.lower() for p in parts[1:]]
+            if "*" not in sources:
+                return False, "frame-ancestors " + " ".join(sources)
+    return True, None
 
 
 def channels_config() -> list[dict]:
@@ -124,6 +153,8 @@ class TV:
         self.fetched_at = 0.0
         self.list_error: str | None = None
         self.secrets: list[str] = []
+        self.podcast_check: dict | None = None
+        self.podcast_checked_at = 0.0
 
     async def refresh(self) -> None:
         if time.time() - self.fetched_at < LIST_MAX_AGE_S and self.streams:
@@ -138,6 +169,24 @@ class TV:
         except (httpx.HTTPError, ValueError) as e:
             self.list_error = f"TDTChannels: {e}"
         self.fetched_at = time.time()
+
+    async def podcasts(self) -> dict | None:
+        """La web de podcasts y si se puede mostrar dentro del panel (se comprueba cada 6 h)."""
+        p = podcasts_config()
+        if not p:
+            return None
+        if self.podcast_check is None or self.podcast_check.get("url") != p["url"] \
+                or time.time() - self.podcast_checked_at > PODCAST_CHECK_S:
+            try:
+                r = await self.client.get(p["url"], headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT,
+                                          follow_redirects=True)
+                ok, why = frame_policy(r.headers)
+                self.podcast_check = {"url": p["url"], "embebible": ok, "motivo": why}
+            except httpx.HTTPError as e:
+                # Sin comprobar: la tablet lo intenta igual, con el enlace a mano por si no se ve
+                self.podcast_check = {"url": p["url"], "embebible": None, "motivo": f"Sin comprobar: {e.__class__.__name__}"}
+            self.podcast_checked_at = time.time()
+        return {"nombre": p["nombre"], **self.podcast_check}
 
     def channels(self) -> list[dict]:
         """Los canales para la interfaz, con lo que hace falta para verlos."""

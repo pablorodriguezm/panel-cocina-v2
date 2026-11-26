@@ -142,3 +142,36 @@ def test_proxy_endpoint_refuses_unlisted_addresses(tmp_path, monkeypatch):
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
+
+
+def test_frame_policy_reads_both_headers():
+    assert tv.frame_policy(httpx.Headers({})) == (True, None)
+    assert tv.frame_policy(httpx.Headers({"X-Frame-Options": "SAMEORIGIN"}))[0] is False
+    assert tv.frame_policy(httpx.Headers({"X-Frame-Options": "DENY"}))[0] is False
+    assert tv.frame_policy(httpx.Headers({"Content-Security-Policy": "default-src 'self'; frame-ancestors 'self'"})) == \
+        (False, "frame-ancestors 'self'")
+    assert tv.frame_policy(httpx.Headers({"Content-Security-Policy": "frame-ancestors *"}))[0] is True
+    assert tv.frame_policy(httpx.Headers({"Content-Security-Policy": "default-src 'self'"}))[0] is True
+
+
+@pytest.mark.anyio
+async def test_podcasts_check_is_cached_and_configurable(cfg):
+    calls = []
+    def handler(request):
+        calls.append(str(request.url))
+        if request.url.path == "/podcasts":
+            return httpx.Response(302, headers={"location": "https://overcast.fm/login"})
+        return httpx.Response(200, headers={"x-frame-options": "SAMEORIGIN"}, text="<html>")
+    t = tv.TV(httpx.AsyncClient(transport=httpx.MockTransport(handler)), key=KEY)
+    p = await t.podcasts()
+    assert p == {"nombre": "Overcast", "url": "https://overcast.fm/podcasts", "embebible": False,
+                 "motivo": "X-Frame-Options: sameorigin"}
+    await t.podcasts()
+    assert len(calls) == 2                       # la redirección al login y nada más: queda en caché
+    def boom(request):
+        raise httpx.ConnectError("sin red")
+    t = tv.TV(httpx.AsyncClient(transport=httpx.MockTransport(boom)), key=KEY)
+    assert (await t.podcasts())["embebible"] is None
+    cfg.write_text("ubicacion: {latitud: 0, longitud: 0}\ntv: {podcasts: false}\n", encoding="utf-8")
+    config.load.cache_clear()
+    assert tv.podcasts_config() is None and await t.podcasts() is None

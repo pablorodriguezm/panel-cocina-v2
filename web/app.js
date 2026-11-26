@@ -9,7 +9,7 @@ const CAL_NAME = "Rim y Pablo";
 
 const state = {
   tv: { channels: null, current: null, playing: false, hls: null, error: null,
-        hasList: false, myList: null, tab: null, q: "", group: "" },
+        hasList: false, myList: null, tab: null, q: "", group: "", hasPod: false, pod: null },
   users: [], user: null, view: "hoy", home: null, house: null, power: null, trips: {}, list: null, weatherDay: null,
   pending: {}, busy: null, houseError: null,
   menu: [], menuWeek: 0, menuBusy: null,  // menú de esta semana y de la siguiente
@@ -474,10 +474,12 @@ async function loadTV() {
       state.tv.channels = r.canales;
       state.tv.error = r.error;
       state.tv.hasList = !!r.mi_lista;
+      state.tv.hasPod = !!r.podcasts;
     } catch (e) { console.warn(e); state.tv.error = "No se pudo cargar la lista de canales."; }
   }
   if (state.tv.tab === null) {
-    state.tv.tab = tvPref("tv-tab") === "lista" ? "lista" : "abiertos";
+    const saved = tvPref("tv-tab");
+    state.tv.tab = ["lista", "podcasts"].includes(saved) ? saved : "abiertos";
     state.tv.group = tvPref("tv-grupo") || "";
   }
   renderTV();
@@ -520,12 +522,20 @@ function tvChannel(id) {
 
 function renderTV() {
   const chans = state.tv.channels || [];
-  const tab = state.tv.hasList ? state.tv.tab : "abiertos";
+  const tabList = [["abiertos", "Abiertos"], ...(state.tv.hasList ? [["lista", "Mi lista"]] : []),
+    ...(state.tv.hasPod ? [["podcasts", "Podcasts"]] : [])];
+  const tab = tabList.some(([k]) => k === state.tv.tab) ? state.tv.tab : "abiertos";
   const kind = { hls: "", atres: "Atresplayer", youtube: "YouTube", web: "Solo en su web" };
-  const tabs = state.tv.hasList ? `<div class="tv-tabs">${[["abiertos", "Abiertos"], ["lista", "Mi lista"]].map(([k, l]) =>
+  const tabs = tabList.length > 1 ? `<div class="tv-tabs">${tabList.map(([k, l]) =>
     `<button data-tvtab="${k}" class="${tab === k ? "on" : ""}">${l}</button>`).join("")}</div>` : "";
   let body;
-  if (tab === "lista") {
+  if (tab === "podcasts") {
+    const p = state.tv.pod;
+    body = `<div class="tv-pod"><span class="tv-pod-ic">🎧</span><p><b>${esc(p?.nombre || "Overcast")}</b>
+        Tu catálogo y por dónde vas, como en la app. Si pide iniciar sesión, hazlo una vez aquí.</p>
+        <button class="k-btn main" data-pod>Abrir aquí</button>
+        ${p?.url ? `<a class="tv-link" href="${esc(p.url)}" target="_blank" rel="noopener">Abrir en su web</a>` : ""}</div>`;
+  } else if (tab === "lista") {
     const list = state.tv.myList;
     const groups = (list?.grupos || []).filter((g) => list.canales.some((c) => c.g === g.id));
     body = list && list.canales.length
@@ -542,21 +552,53 @@ function renderTV() {
   }
   $("tv-list").innerHTML = head("📺", "Canales", "#3F7FD9") + tabs + body;
   $("tv-list").querySelectorAll("[data-tvtab]").forEach((b) => b.addEventListener("click", () => {
+    const wasPod = state.tv.current === "podcasts";
     state.tv.tab = b.dataset.tvtab;
     tvPref("tv-tab", state.tv.tab);
+    if (state.tv.tab === "podcasts") return playPodcasts();
+    if (wasPod) stopTV();  // de Podcasts a los canales: fuera la web de Overcast
     renderTV();
   }));
+  $("tv-list").querySelector("[data-pod]")?.addEventListener("click", playPodcasts);
   $("tv-list").querySelectorAll(".tv-chans:not(#tv-results) [data-tv]").forEach((b) => b.addEventListener("click", () => playTV(b.dataset.tv)));
   if ($("tv-results")) {
     $("tv-q").addEventListener("input", (e) => { state.tv.q = e.target.value; renderTVResults(); });
     $("tv-group").addEventListener("change", (e) => { state.tv.group = e.target.value; tvPref("tv-grupo", state.tv.group); renderTVResults(); });
     renderTVResults();
   }
+  if (tab === "podcasts" && state.tv.current !== "podcasts") return playPodcasts();
   if (!state.tv.current) {
     const saved = tvSaved() && tvChannel(tvSaved());
     if (saved && saved.tipo !== "web") return playTV(saved.id);
     $("tv-screen").innerHTML = `<div class="tv-idle"><span>📺</span><p>Elige un canal</p></div>`;
   }
+}
+
+// La web de podcasts (Overcast) a todo el recuadro de la imagen. Si Overcast no deja mostrarla dentro, un enlace.
+async function playPodcasts() {
+  stopTV();
+  state.tv.current = "podcasts";
+  if (!state.tv.pod) {
+    try { state.tv.pod = await getJSON("/api/tv/podcasts"); } catch (e) { console.warn(e); }
+  }
+  const p = state.tv.pod;
+  if (state.tv.current !== "podcasts") return;
+  renderTV();
+  const box = $("tv-screen");
+  if (!p) {
+    box.innerHTML = `<div class="tv-idle"><span>🎧</span><p>No se pudo cargar la pestaña de podcasts.</p></div>`;
+    return;
+  }
+  if (p.embebible === false) {
+    box.innerHTML = `<div class="tv-idle"><span>🔒</span><p><b>${esc(p.nombre)}</b> no deja mostrar su web dentro del panel.</p>
+      <a class="tv-open" href="${esc(p.url)}" target="_blank" rel="noopener">Abrir en su web</a></div>`;
+    return;
+  }
+  box.innerHTML = `<div class="tv-web"><iframe src="${esc(p.url)}" allow="autoplay; encrypted-media; fullscreen"
+      referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+    <div class="tv-bar"><b>${esc(p.nombre)}</b><span class="tv-msg">Si sale en blanco o pide la sesión cada vez,
+      <a class="tv-link" href="${esc(p.url)}" target="_blank" rel="noopener">ábrelo en su web</a></span></div>`;
+  state.tv.playing = true;  // como con la tele: mientras está abierta, no se bloquea la pantalla
 }
 
 // Solo la lista de resultados: así el buscador no pierde el foco mientras se escribe

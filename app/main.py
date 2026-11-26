@@ -8,6 +8,7 @@ GET  /api/menu?semana=0   → menú de la semana (0 esta, 1 la siguiente) y sus 
 GET  /api/tv              → canales de la pestaña TV
 GET  /api/tv/hls?u=…&s=…  → intermediario de vídeo: solo direcciones firmadas por el panel (?k=… si llevan la clave IPTV)
 GET  /api/tv/iptv         → «Mi lista»: grupos y canales en directo de la lista IPTV privada
+GET  /api/tv/podcasts     → la web de podcasts (Overcast) y si se puede mostrar dentro del panel
 GET  /api/tv/iptv/{id}    → la emisión de un canal de «Mi lista» (sin que su dirección con la clave salga de aquí)
 GET  /api/cocina          → temporizadores y estado del fogón (docs/COCINA.md)
 POST /api/cocina/temporizadores            → nuevo temporizador {minutos, nombre}
@@ -264,7 +265,17 @@ async def push_reminders(request: Request, x_panel_token: str | None = Header(de
 async def tv_channels():
     """Los canales de la pestaña TV, con su emisión (a través del intermediario), su reproductor incrustado o su web."""
     await state["tv"].refresh()
-    return {"canales": state["tv"].channels(), "error": state["tv"].list_error, "mi_lista": state["iptv"].configured}
+    return {"canales": state["tv"].channels(), "error": state["tv"].list_error, "mi_lista": state["iptv"].configured,
+            "podcasts": tv.podcasts_config() is not None}
+
+
+@app.get("/api/tv/podcasts")
+async def tv_podcasts():
+    """La pestaña Podcasts: la web (por defecto Overcast) y si deja mostrarse dentro del panel."""
+    p = await state["tv"].podcasts()
+    if not p:
+        raise HTTPException(404, "Sin pestaña de podcasts (tv.podcasts: false)")
+    return p
 
 
 @app.get("/api/tv/iptv")
