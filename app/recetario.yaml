@@ -11,7 +11,7 @@
 #
 # Para añadir o quitar platos basta con editar este fichero.
 
-basicos: [Aceite de oliva virgen extra, Sal, Pimienta, Pimentón dulce, Comino, Curry, Orégano, Laurel, Vinagre,
+basicos: [Aceite de oliva virgen extra, Sal, Pimienta, Pimentón dulce, Comino, Curry, Orégano, Laurel, Vinagre, Café,
           Harina, Salsa de soja]
 
 recetas:
@@ -598,3 +598,357 @@ recetas:
       - {nombre: Jamón serrano, cantidad: 80, unidad: g, seccion: Carnicería}
       - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
       - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+
+  # ==================== Platos de los planes nutricionales (app/planes.yaml) ====================
+  # Los planes solo traen el nombre del plato: las cantidades son para 2 personas, a ración normal. También pueden
+  # salir en el menú sorteado y como cambio de un plato del mismo grupo.
+
+  # ---------- Planes: comidas ----------
+  - id: plan-brocoli-huevo-pavo
+    nombre: Brócoli con huevo cocido y taquitos de pavo
+    comida: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Brócoli, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Taquitos de pavo, cantidad: 150, unidad: g, seccion: Carnicería}
+
+  - id: plan-arroz-tomate-huevo
+    nombre: Arroz con tomate y huevo a la plancha
+    comida: true
+    grupo: cereal
+    ingredientes:
+      - {nombre: Arroz redondo, cantidad: 160, unidad: g, seccion: Despensa}
+      - {nombre: Tomate frito sin azúcar, cantidad: 200, unidad: g, seccion: Despensa}
+      - {nombre: Huevos, cantidad: 4, unidad: ud, seccion: Huevos y lácteos}
+
+  - id: plan-lubina-esparragos
+    nombre: Lubina con espárragos blancos
+    comida: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Lubina, cantidad: 2, unidad: ud, seccion: Pescadería}
+      - {nombre: Espárragos blancos, cantidad: 1, unidad: lata, seccion: Despensa}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: plan-pasta-picada-pollo
+    nombre: Pasta con carne picada de pollo y salsa de tomate
+    comida: true
+    grupo: cereal
+    ingredientes:
+      - {nombre: Pasta integral, cantidad: 160, unidad: g, seccion: Despensa}
+      - {nombre: Carne picada de pollo, cantidad: 300, unidad: g, seccion: Carnicería}
+      - {nombre: Tomate frito sin azúcar, cantidad: 200, unidad: g, seccion: Despensa}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: plan-calabacin-muslitos
+    nombre: Calabacín al horno con muslitos de pollo
+    comida: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Calabacín, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Muslos de pollo, cantidad: 4, unidad: ud, seccion: Carnicería}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+
+  - id: plan-brocoli-patata-pollo
+    nombre: Brócoli con patata y pechugas de pollo
+    comida: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Brócoli, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Patata, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pechuga de pollo, cantidad: 300, unidad: g, seccion: Carnicería}
+
+  - id: plan-arroz-pavo-esparragos
+    nombre: Arroz con solomillos de pavo y espárragos
+    comida: true
+    grupo: cereal
+    ingredientes:
+      - {nombre: Arroz redondo, cantidad: 160, unidad: g, seccion: Despensa}
+      - {nombre: Solomillo de pavo, cantidad: 300, unidad: g, seccion: Carnicería}
+      - {nombre: Espárragos verdes, cantidad: 1, unidad: manojo, seccion: Fruta y verdura}
+
+  - id: plan-ensalada-gambas
+    nombre: Ensalada de lechuga con gambas y queso fresco
+    comida: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Lechuga, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Gambas cocidas, cantidad: 200, unidad: g, seccion: Pescadería}
+      - {nombre: Queso fresco, cantidad: 125, unidad: g, seccion: Huevos y lácteos}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+
+  - id: plan-lacon-patatas
+    nombre: Lacón con pimentón, patatas y espárragos blancos
+    comida: true
+    grupo: carne_roja
+    ingredientes:
+      - {nombre: Lacón cocido, cantidad: 300, unidad: g, seccion: Carnicería}
+      - {nombre: Patata, cantidad: 3, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Espárragos blancos, cantidad: 1, unidad: lata, seccion: Despensa}
+      - {nombre: Pimentón dulce}
+
+  - id: plan-pasta-pollo-champinones
+    nombre: Pasta con pollo y champiñones
+    comida: true
+    grupo: cereal
+    ingredientes:
+      - {nombre: Pasta integral, cantidad: 160, unidad: g, seccion: Despensa}
+      - {nombre: Pechuga de pollo, cantidad: 300, unidad: g, seccion: Carnicería}
+      - {nombre: Champiñones, cantidad: 250, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+
+  - id: plan-dorada-plancha-ensalada
+    nombre: Dorada a la plancha con guarnición de ensalada
+    comida: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Dorada, cantidad: 2, unidad: ud, seccion: Pescadería}
+      - {nombre: Lechuga, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+
+  - id: plan-pollo-cebolla-brocoli
+    nombre: Pechugas de pollo a la plancha con cebolla y brócoli
+    comida: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Pechuga de pollo, cantidad: 300, unidad: g, seccion: Carnicería}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Brócoli, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: plan-ensalada-atun-esparragos
+    nombre: Ensalada de lechuga con atún, espárragos blancos y queso fresco
+    comida: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Lechuga, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Atún en conserva, cantidad: 2, unidad: lata, seccion: Despensa}
+      - {nombre: Espárragos blancos, cantidad: 1, unidad: lata, seccion: Despensa}
+      - {nombre: Queso fresco, cantidad: 125, unidad: g, seccion: Huevos y lácteos}
+
+  - id: plan-arroz-huevos-setas
+    nombre: Arroz con huevos a la plancha y setas
+    comida: true
+    grupo: cereal
+    ingredientes:
+      - {nombre: Arroz redondo, cantidad: 160, unidad: g, seccion: Despensa}
+      - {nombre: Huevos, cantidad: 4, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Setas variadas, cantidad: 250, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+
+  # ---------- Planes: cenas ----------
+  - id: plan-salmon-patata-calabacin
+    nombre: Salmón con patata y calabacín al horno
+    cena: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Salmón en lomos, cantidad: 300, unidad: g, seccion: Pescadería}
+      - {nombre: Patata, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Calabacín, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: plan-sopa-tortilla-havarti
+    nombre: Sopa de fideos y tortilla francesa con queso havarti light y pavo
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Fideos, cantidad: 60, unidad: g, seccion: Despensa}
+      - {nombre: Caldo de pollo, cantidad: 750, unidad: ml, seccion: Despensa}
+      - {nombre: Huevos, cantidad: 4, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Queso havarti light, cantidad: 40, unidad: g, seccion: Huevos y lácteos}
+      - {nombre: Pavo en lonchas, cantidad: 40, unidad: g, seccion: Carnicería}
+
+  - id: plan-ensalada-queso-huevo-atun
+    nombre: Ensalada de lechuga con queso fresco, huevo y atún
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Lechuga, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Queso fresco, cantidad: 125, unidad: g, seccion: Huevos y lácteos}
+      - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Atún en conserva, cantidad: 2, unidad: lata, seccion: Despensa}
+
+  - id: plan-tortilla-patata
+    nombre: Tortilla de patata
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Huevos, cantidad: 5, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Patata, cantidad: 3, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Cebolla, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: plan-pizza-casera
+    nombre: Pizza casera con queso mozzarella y jamón
+    cena: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Masa de pizza de cereales y semillas, cantidad: 1, unidad: ud, seccion: Panadería}
+      - {nombre: Tomate frito sin azúcar, cantidad: 100, unidad: g, seccion: Despensa}
+      - {nombre: Mozzarella, cantidad: 125, unidad: g, seccion: Huevos y lácteos}
+      - {nombre: Jamón cocido en lonchas, cantidad: 100, unidad: g, seccion: Carnicería}
+      - {nombre: Orégano}
+
+  - id: plan-dorada-horno-ensalada
+    nombre: Dorada al horno con ensalada
+    cena: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Dorada, cantidad: 2, unidad: ud, seccion: Pescadería}
+      - {nombre: Lechuga, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Tomate, cantidad: 2, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Limón, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+
+  - id: plan-revuelto-gambas-champinones
+    nombre: Revuelto de gambas con champiñones
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Huevos, cantidad: 4, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Gambas peladas, cantidad: 200, unidad: g, seccion: Pescadería}
+      - {nombre: Champiñones, cantidad: 250, unidad: g, seccion: Fruta y verdura}
+      - {nombre: Ajo, cantidad: 2, unidad: diente, seccion: Fruta y verdura}
+
+  - id: plan-crema-calabacin-tortilla
+    nombre: Crema de calabacín y tortilla francesa con jamón cocido
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Calabacín, cantidad: 3, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Puerro, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Huevos, cantidad: 4, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Jamón cocido en lonchas, cantidad: 60, unidad: g, seccion: Carnicería}
+
+  - id: plan-salmon-brocoli-feta
+    nombre: Salmón a la plancha con brócoli y queso feta
+    cena: true
+    grupo: pescado
+    ingredientes:
+      - {nombre: Salmón en lomos, cantidad: 300, unidad: g, seccion: Pescadería}
+      - {nombre: Brócoli, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Queso feta, cantidad: 80, unidad: g, seccion: Huevos y lácteos}
+
+  - id: plan-revuelto-gambas-esparragos
+    nombre: Revuelto de gambas con espárragos blancos
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Huevos, cantidad: 4, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Gambas peladas, cantidad: 200, unidad: g, seccion: Pescadería}
+      - {nombre: Espárragos blancos, cantidad: 1, unidad: lata, seccion: Despensa}
+
+  - id: plan-crema-calabacin-pavo
+    nombre: Crema de calabacín y filetes de pavo a la plancha
+    cena: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Calabacín, cantidad: 3, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Puerro, cantidad: 1, unidad: ud, seccion: Fruta y verdura}
+      - {nombre: Pechuga de pavo, cantidad: 300, unidad: g, seccion: Carnicería}
+
+  - id: plan-alitas-patatas
+    nombre: Alitas de pollo al horno con patatas
+    cena: true
+    grupo: carne_blanca
+    ingredientes:
+      - {nombre: Alitas de pollo, cantidad: 800, unidad: g, seccion: Carnicería}
+      - {nombre: Patata, cantidad: 3, unidad: ud, seccion: Fruta y verdura}
+
+  - id: plan-revuelto-jamon-queso
+    nombre: Revuelto de jamón cocido con queso fresco
+    cena: true
+    grupo: huevo
+    ingredientes:
+      - {nombre: Huevos, cantidad: 4, unidad: ud, seccion: Huevos y lácteos}
+      - {nombre: Jamón cocido en lonchas, cantidad: 100, unidad: g, seccion: Carnicería}
+      - {nombre: Queso fresco, cantidad: 125, unidad: g, seccion: Huevos y lácteos}
+
+  # ---------- Planes: desayunos (grupo «desayuno») ----------
+  - id: plan-desayuno-pavo
+    nombre: Café con leche semidesnatada y tostada con pavo en lonchas
+    desayuno: true
+    grupo: desayuno
+    ingredientes:
+      - {nombre: Café}
+      - {nombre: Leche semidesnatada, cantidad: 400, unidad: ml, seccion: Huevos y lácteos}
+      - {nombre: Pan integral de molde, cantidad: 70, unidad: g, seccion: Panadería}
+      - {nombre: Pavo en lonchas, cantidad: 60, unidad: g, seccion: Carnicería}
+
+  - id: plan-desayuno-jamon
+    nombre: Café con leche semidesnatada y tostada con jamón cocido en lonchas
+    desayuno: true
+    grupo: desayuno
+    ingredientes:
+      - {nombre: Café}
+      - {nombre: Leche semidesnatada, cantidad: 400, unidad: ml, seccion: Huevos y lácteos}
+      - {nombre: Pan integral de molde, cantidad: 70, unidad: g, seccion: Panadería}
+      - {nombre: Jamón cocido en lonchas, cantidad: 60, unidad: g, seccion: Carnicería}
+
+  - id: plan-desayuno-philadelphia
+    nombre: Café con leche semidesnatada y tostada con Philadelphia light
+    desayuno: true
+    grupo: desayuno
+    ingredientes:
+      - {nombre: Café}
+      - {nombre: Leche semidesnatada, cantidad: 400, unidad: ml, seccion: Huevos y lácteos}
+      - {nombre: Pan integral de molde, cantidad: 70, unidad: g, seccion: Panadería}
+      - {nombre: Queso para untar light, cantidad: 40, unidad: g, seccion: Huevos y lácteos}
+
+  - id: plan-desayuno-huevo
+    nombre: Café con leche semidesnatada y tostada con huevo revuelto
+    desayuno: true
+    grupo: desayuno
+    ingredientes:
+      - {nombre: Café}
+      - {nombre: Leche semidesnatada, cantidad: 400, unidad: ml, seccion: Huevos y lácteos}
+      - {nombre: Pan integral de molde, cantidad: 70, unidad: g, seccion: Panadería}
+      - {nombre: Huevos, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+
+  # ---------- Planes: media mañana y merienda (grupo «tentempie») ----------
+  - id: plan-yogur-proteinas
+    nombre: Yogur de proteínas con stracciatella
+    media_manana: true
+    merienda: true
+    grupo: tentempie
+    ingredientes:
+      - {nombre: Yogur de proteínas stracciatella, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+
+  - id: plan-tortitas-pavo
+    nombre: 2 tortitas de maíz con pavo
+    media_manana: true
+    merienda: true
+    grupo: tentempie
+    ingredientes:
+      - {nombre: Tortitas de maíz, cantidad: 4, unidad: ud, seccion: Despensa}
+      - {nombre: Pavo en lonchas, cantidad: 60, unidad: g, seccion: Carnicería}
+
+  - id: plan-almendras-lomo
+    nombre: Almendras y 2 lonchas de lomo embuchado
+    media_manana: true
+    merienda: true
+    grupo: tentempie
+    ingredientes:
+      - {nombre: Almendras, cantidad: 30, unidad: g, seccion: Despensa}
+      - {nombre: Lomo embuchado, cantidad: 40, unidad: g, seccion: Carnicería}
+
+  - id: plan-yogur-bifidus
+    nombre: Yogur bífidus desnatado
+    media_manana: true
+    merienda: true
+    grupo: tentempie
+    ingredientes:
+      - {nombre: Yogur bífidus desnatado, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}
+
+  - id: plan-almendras-o-griego
+    nombre: Almendras o yogur griego ligero
+    media_manana: true
+    merienda: true
+    grupo: tentempie
+    ingredientes:
+      - {nombre: Almendras, cantidad: 30, unidad: g, seccion: Despensa}
+
+  - id: plan-griego-o-cafe
+    nombre: Yogur griego ligero o café
+    media_manana: true
+    merienda: true
+    grupo: tentempie
+    ingredientes:
+      - {nombre: Yogur griego ligero, cantidad: 2, unidad: ud, seccion: Huevos y lácteos}

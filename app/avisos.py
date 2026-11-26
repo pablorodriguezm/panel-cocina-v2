@@ -15,7 +15,7 @@ IPTV_CADUCA_DIAS = 10
 
 
 def build(now: datetime, *, sources: dict[str, dict], extra: dict[str, dict], lists: list[dict], shelly: dict,
-          backups: dict | None = None, iptv: dict | None = None) -> list[dict]:
+          backups: dict | None = None, iptv: dict | None = None, kitchen: dict | None = None) -> list[dict]:
     """`sources`: bloques de caché por clave; `extra`: fuentes de los calendarios extra; `lists`: las de
     Recordatorios; `shelly`: el estado del envío de la tarifa; `iptv`: el de «Mi lista» de la pestaña TV."""
     out = []
@@ -38,6 +38,15 @@ def build(now: datetime, *, sources: dict[str, dict], extra: dict[str, dict], li
         out.append({"id": "shelly", "texto": f"No se envía el precio a Shelly: {shelly['error'].splitlines()[0]}"})
     if backups and not backups["ok"]:
         out.append({"id": "copias", "texto": f"{backups['error']}. Mira el stack «copias» en Portainer."})
+    if kitchen:
+        if kitchen.get("error_sensor"):
+            out.append({"id": "cocina:sensor", "texto": f"Sin el sensor de la cocina, no hay aviso de fogón olvidado: "
+                                                         f"{kitchen['error_sensor'].splitlines()[0]}"})
+        elif not kitchen.get("sensor"):
+            out.append({"id": "cocina:sensor", "texto": "No hay sensor de potencia de la cocina (cocina.potencia o el aparato "
+                                                         "«Cocina» de consumo): no hay aviso de fogón olvidado."})
+        if kitchen.get("error_anuncio"):
+            out.append({"id": "cocina:echo", "texto": f"El Echo no anuncia los avisos de la cocina: {kitchen['error_anuncio'].splitlines()[0]}"})
     if iptv and iptv.get("configurada"):
         if iptv.get("error"):
             out.append({"id": "iptv", "texto": f"TV: {iptv['error']}"})

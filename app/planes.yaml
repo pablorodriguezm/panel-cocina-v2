@@ -1,0 +1,43 @@
+# Planes nutricionales de Pablo (de su nutricionista), para el menú semanal (app/menu.py, docs/MENU.md).
+#
+# Con «menu.modo: planes» (el modo por defecto) el menú sigue estos planes tal cual, uno cada semana y por turnos:
+# la semana del lunes «desde» toca el primero, la siguiente el segundo y así. Cada toma es el id de una receta de
+# app/recetario.yaml (ahí están las cantidades, para 2 personas); «libre» es una toma sin plato.
+# Tomas: desayuno, media_manana, comida, merienda, cena.
+
+desde: 2026-11-23
+
+planes:
+  - nombre: Plan del 23 de enero
+    dias:
+      - {desayuno: plan-desayuno-pavo, media_manana: plan-yogur-proteinas, comida: plan-brocoli-huevo-pavo,
+         merienda: plan-almendras-lomo, cena: plan-salmon-patata-calabacin}                       # lunes
+      - {desayuno: plan-desayuno-jamon, media_manana: plan-tortitas-pavo, comida: plan-arroz-tomate-huevo,
+         merienda: plan-yogur-bifidus, cena: plan-sopa-tortilla-havarti}                          # martes
+      - {desayuno: plan-desayuno-pavo, media_manana: plan-yogur-proteinas, comida: plan-lubina-esparragos,
+         merienda: plan-almendras-lomo, cena: plan-ensalada-queso-huevo-atun}                     # miércoles
+      - {desayuno: plan-desayuno-jamon, media_manana: plan-tortitas-pavo, comida: plan-pasta-picada-pollo,
+         merienda: plan-yogur-bifidus, cena: plan-tortilla-patata}                                # jueves
+      - {desayuno: plan-desayuno-pavo, media_manana: plan-yogur-proteinas, comida: plan-calabacin-muslitos,
+         merienda: plan-almendras-lomo, cena: plan-pizza-casera}                                  # viernes
+      - {desayuno: plan-desayuno-philadelphia, media_manana: plan-tortitas-pavo, comida: plan-brocoli-patata-pollo,
+         merienda: plan-yogur-bifidus, cena: plan-dorada-horno-ensalada}                          # sábado
+      - {desayuno: plan-desayuno-philadelphia, media_manana: plan-yogur-proteinas, comida: plan-arroz-pavo-esparragos,
+         merienda: plan-almendras-lomo, cena: plan-revuelto-gambas-champinones}                   # domingo
+
+  - nombre: Plan del 27 de febrero
+    dias:
+      - {desayuno: plan-desayuno-pavo, media_manana: plan-almendras-o-griego, comida: plan-ensalada-gambas,
+         merienda: plan-griego-o-cafe, cena: plan-crema-calabacin-tortilla}                       # lunes
+      - {desayuno: plan-desayuno-jamon, media_manana: plan-almendras-o-griego, comida: plan-lacon-patatas,
+         merienda: plan-griego-o-cafe, cena: plan-salmon-brocoli-feta}                            # martes
+      - {desayuno: plan-desayuno-pavo, media_manana: plan-almendras-o-griego, comida: plan-pasta-pollo-champinones,
+         merienda: plan-griego-o-cafe, cena: plan-revuelto-gambas-esparragos}                     # miércoles
+      - {desayuno: plan-desayuno-jamon, media_manana: plan-almendras-o-griego, comida: plan-dorada-plancha-ensalada,
+         merienda: plan-griego-o-cafe, cena: plan-crema-calabacin-pavo}                           # jueves
+      - {desayuno: plan-desayuno-pavo, media_manana: plan-almendras-o-griego, comida: plan-pollo-cebolla-brocoli,
+         merienda: plan-griego-o-cafe, cena: plan-alitas-patatas}                                 # viernes
+      - {desayuno: plan-desayuno-huevo, media_manana: plan-almendras-o-griego, comida: plan-ensalada-atun-esparragos,
+         merienda: plan-griego-o-cafe, cena: libre}                                               # sábado
+      - {desayuno: plan-desayuno-huevo, media_manana: plan-almendras-o-griego, comida: plan-arroz-huevos-setas,
+         merienda: plan-griego-o-cafe, cena: plan-revuelto-jamon-queso}                           # domingo

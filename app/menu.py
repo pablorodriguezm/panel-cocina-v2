@@ -1,8 +1,12 @@
-"""Menú semanal saludable (comida y cena) y la lista de sus ingredientes.
+"""Menú semanal saludable y la lista de sus ingredientes.
 
-- El menú sale del recetario (app/recetario.yaml) con un plan fijo de grupos por día, para que la semana quede
-  equilibrada: legumbre tres veces, pescado unas tres, huevo dos, carne roja una… Qué receta toca de cada grupo se
-  elige al azar con la semana como semilla: el mismo menú para los dos y tras un reinicio, sin guardar nada.
+- Por defecto («menu.modo: planes») sigue tal cual los planes nutricionales de app/planes.yaml, uno cada semana y
+  por turnos, con sus cinco tomas: desayuno, media mañana, comida, merienda y cena.
+- Con «menu.modo: recetario», comida y cena salen del recetario (app/recetario.yaml) con un plan fijo de grupos por
+  día, para que la semana quede equilibrada: legumbre tres veces, pescado unas tres, huevo dos, carne roja una… Qué
+  receta toca de cada grupo se elige al azar con la semana como semilla: el mismo menú para los dos y tras un
+  reinicio, sin guardar nada.
+- Cada plato se puede cambiar a mano por otro del mismo grupo (Store.swap).
 - Solo se enseña en el panel (Hoy, Calendario y Tareas): no se escribe en el calendario de Apple.
 - Los ingredientes de la semana se suman y se pueden pasar a la lista de la compra tocándolos. Lo pasado queda
   «pendiente» en el panel (sale ya en la Compra) hasta que el Atajo lo recoge (`POST /api/recordatorios/recoger`),
@@ -26,11 +30,17 @@ import yaml
 from . import config
 
 RECETARIO = Path(__file__).with_name("recetario.yaml")
+PLANES = Path(__file__).with_name("planes.yaml")
 DATA_PATH = Path(os.environ.get("PANEL_DATA", "/data")) / "menu.json"
 
 # Grupo de cada día, de lunes a domingo
 COMIDAS = ["legumbre", "pescado", "carne_blanca", "legumbre", "cereal", "legumbre", "carne_roja"]
 CENAS = ["verdura", "huevo", "pescado", "carne_blanca", "pescado", "huevo", "verdura"]
+
+# Las tomas del día, en orden. En modo recetario solo hay comida y cena.
+TOMAS = ["desayuno", "media_manana", "comida", "merienda", "cena"]
+GRUPOS_TOMAS = {"desayuno", "tentempie"}  # grupos de desayuno, media mañana y merienda
+LIBRE = "libre"
 
 SECCIONES = ["Fruta y verdura", "Pescadería", "Carnicería", "Huevos y lácteos", "Panadería", "Despensa", "Congelados"]
 PLURAL = {"diente": "dientes", "lata": "latas", "manojo": "manojos", "barra": "barras"}
@@ -58,6 +68,32 @@ def recetario() -> dict:
     with RECETARIO.open(encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     return {"basicos": data.get("basicos") or [], "recetas": data.get("recetas") or []}
+
+
+@lru_cache
+def planes() -> dict:
+    try:
+        with PLANES.open(encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+    except OSError:
+        data = {}
+    return {"desde": data.get("desde") or date(2026, 11, 23), "planes": data.get("planes") or []}
+
+
+def mode() -> str:
+    """«planes» (los planes nutricionales por turnos, por defecto) o «recetario» (comida y cena sorteadas)."""
+    return "recetario" if cfg().get("modo") == "recetario" or not planes()["planes"] else "planes"
+
+
+def week_plan(week: date) -> dict | None:
+    """El plan nutricional de esa semana: por turnos desde la semana de «desde» (o «menu.planes_desde»)."""
+    if mode() != "planes":
+        return None
+    start = cfg().get("planes_desde") or planes()["desde"]
+    if isinstance(start, str):
+        start = date.fromisoformat(start)
+    all_plans = planes()["planes"]
+    return all_plans[((monday(week) - monday(start)).days // 7) % len(all_plans)]
 
 
 def norm(s: str) -> str:
@@ -104,20 +140,31 @@ def plan(week: date, changes: dict[str, str] | None = None) -> list[dict]:
     """Comida y cena de cada día de la semana que empieza el lunes `week`. `changes` son los platos cambiados a
     mano: {"AAAA-MM-DD|comida": id de receta}."""
     week = monday(week)
-    year, num, _ = week.isocalendar()
-    rng = random.Random(f"{year}-{num}")
-    when = season(week)
-    used: set[str] = set()
-    days = []
-    for i in range(7):
-        lunch = _pick(rng, pool("comida", COMIDAS[i], when), used)
-        dinner = _pick(rng, pool("cena", CENAS[i], when), used)
-        days.append({"fecha": (week + timedelta(days=i)).isoformat(), "comida": _dish(lunch), "cena": _dish(dinner)})
     by_id = {r["id"]: r for r in recetario()["recetas"]}
+    days = []
+    fixed = week_plan(week)
+    if fixed:
+        for i in range(7):
+            cells = (fixed.get("dias") or [])[i] if i < len(fixed.get("dias") or []) else {}
+            day = {"fecha": (week + timedelta(days=i)).isoformat()}
+            for t in TOMAS:
+                v = (cells or {}).get(t)
+                day[t] = _free() if v == LIBRE else _dish(by_id.get(v)) if v else None
+            days.append(day)
+    else:
+        year, num, _ = week.isocalendar()
+        rng = random.Random(f"{year}-{num}")
+        when = season(week)
+        used: set[str] = set()
+        for i in range(7):
+            lunch = _pick(rng, pool("comida", COMIDAS[i], when), used)
+            dinner = _pick(rng, pool("cena", CENAS[i], when), used)
+            days.append({"fecha": (week + timedelta(days=i)).isoformat(), "desayuno": None, "media_manana": None,
+                         "comida": _dish(lunch), "merienda": None, "cena": _dish(dinner)})
     for key, recipe_id in (changes or {}).items():
         fecha, meal = key.split("|")
         day = next((d for d in days if d["fecha"] == fecha), None)
-        if day and recipe_id in by_id and meal in ("comida", "cena"):
+        if day and recipe_id in by_id and meal in TOMAS:
             day[meal] = {**_dish(by_id[recipe_id]), "cambiado": True}
     return days
 
@@ -140,6 +187,11 @@ def _ingredients(recipe: dict) -> list[dict]:
         out.append({"nombre": name, "cantidad": _scale(float(ing["cantidad"]), unit), "unidad": unit,
                     "seccion": ing.get("seccion") or "Despensa"})
     return out
+
+
+def _free() -> dict:
+    """Una toma sin plato («Libre» en el plan): ni ingredientes ni cambio."""
+    return {"id": None, "nombre": "Libre", "grupo": None, "libre": True, "ingredientes": []}
 
 
 def _dish(recipe: dict | None) -> dict | None:
@@ -168,8 +220,8 @@ def shopping(days: list[dict]) -> list[dict]:
     """Ingredientes de toda la semana, sumados y por secciones del súper."""
     total: dict[str, dict] = {}
     for d in days:
-        for meal in ("comida", "cena"):
-            for ing in (d[meal] or {}).get("ingredientes", []):
+        for meal in TOMAS:
+            for ing in (d.get(meal) or {}).get("ingredientes", []):
                 k = key(ing["nombre"], ing["unidad"])
                 item = total.setdefault(k, {"clave": k, "nombre": ing["nombre"], "unidad": ing["unidad"],
                                             "seccion": ing["seccion"], "cantidad": 0, "platos": []})
@@ -231,7 +283,11 @@ class Store:
         original = next(d for d in plan(week) if d["fecha"] == fecha.isoformat())[meal]
         if not current:
             return False
-        taken = {d[m]["id"] for d in days for m in ("comida", "cena") if d[m]} - {current["id"]}
+        taken = {d[m]["id"] for d in days for m in TOMAS if d.get(m)} - {current["id"]}
+        if current.get("libre") or not current.get("grupo"):
+            return False
+        # Desayunos y tentempiés se repiten en la semana: no se excluyen los que ya salen otro día
+        taken = set() if current["grupo"] in GRUPOS_TOMAS else taken
         options = [r["id"] for r in pool(meal, current["grupo"], season(week)) if r["id"] not in taken]
         others = [o for o in options if o != current["id"]]
         if not others:
@@ -324,5 +380,8 @@ def week_view(week: date, store: Store, shopping_titles: list[str]) -> dict[str,
         for item in s["items"]:
             item["pasado"] = item["clave"] in moved
             item["en_lista"] = in_list(item["nombre"], shopping_titles)
+    fixed = week_plan(week)
     return {"semana": week.isoformat(), "estacion": season(week), "personas": personas(), "dias": days, "compra": sections,
-            "basicos": recetario()["basicos"], "lista": shopping_list_name()}
+            "basicos": recetario()["basicos"], "lista": shopping_list_name(), "modo": mode(),
+            "plan": fixed.get("nombre") if fixed else None,
+            "tomas": [t for t in TOMAS if any(d.get(t) for d in days)]}
