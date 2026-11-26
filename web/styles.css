@@ -405,6 +405,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .meals span { font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden; }
 .meals i { font-style: normal; margin-right: 4px; }
+.meals span.free { color: var(--ink-muted); font-style: italic; }
 .meal-row { display: flex; align-items: center; gap: 12px; white-space: normal; }
 .meal-row + .meal-row { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--highlight); }
 .meal-row div { flex: 1; min-width: 0; }

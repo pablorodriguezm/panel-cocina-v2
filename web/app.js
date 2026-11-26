@@ -476,14 +476,18 @@ function closeModal() { $("modal").hidden = true; }
 
 // ---------- Menú semanal ----------
 
-const MEALS = [["comida", "🍽️", "Comida"], ["cena", "🌙", "Cena"]];
+// Las cinco tomas, en orden; en los días (Hoy, Calendario) solo salen comida y cena, el resto en el detalle
+const MEALS = [["desayuno", "☕", "Desayuno"], ["media_manana", "🍎", "Media mañana"], ["comida", "🍽️", "Comida"],
+  ["merienda", "🥜", "Merienda"], ["cena", "🌙", "Cena"]];
+const MAIN_MEALS = MEALS.filter(([k]) => k === "comida" || k === "cena");
 const menuFor = (d) => state.menu.flatMap((w) => w?.dias || []).find((x) => x.fecha === dayKey(d));
+const weekOf = (fecha) => state.menu.find((w) => w?.dias?.some((x) => x.fecha === fecha));
 
 function mealLines(day) {
   const m = menuFor(day);
   if (!m) return "";
-  return `<button class="meals" data-meal="${m.fecha}" aria-label="Menú del día">${MEALS.filter(([k]) => m[k])
-    .map(([k, ic]) => `<span><i>${ic}</i>${esc(m[k].nombre)}</span>`).join("")}</button>`;
+  return `<button class="meals" data-meal="${m.fecha}" aria-label="Menú del día">${MAIN_MEALS.filter(([k]) => m[k])
+    .map(([k, ic]) => `<span${m[k].libre ? ' class="free"' : ""}><i>${ic}</i>${esc(m[k].nombre)}</span>`).join("")}</button>`;
 }
 
 function openMeal(fecha) {
@@ -493,12 +497,13 @@ function openMeal(fecha) {
   $("modal").querySelector(".modal-card").setAttribute("style", "--event:#2E9E5B");
   $("modal-cal").textContent = "MENÚ DEL DÍA";
   $("modal-title").textContent = cap(new Date(fecha + "T12:00").toLocaleDateString(ES, { weekday: "long", day: "numeric", month: "long" }));
-  $("modal-when").textContent = `Para ${per} ${per === 1 ? "persona" : "personas"} · los ingredientes, en Tareas`;
+  const plan = weekOf(fecha)?.plan;
+  $("modal-when").textContent = `${plan ? plan + " · " : ""}Para ${per} ${per === 1 ? "persona" : "personas"} · los ingredientes, en Tareas`;
   // Los días pasados no se cambian
   const canSwap = fecha >= dayKey(new Date());
   $("modal-extra").innerHTML = MEALS.filter(([k]) => m[k]).map(([k, ic, label]) => `<div class="meal-row">
-      <div><b>${ic} ${label}: ${esc(m[k].nombre)}</b>${esc(m[k].ingredientes.map((i) => `${i.nombre} ${i.texto}`).join(" · "))}</div>
-      ${canSwap ? `<button class="swap" data-swap="${k}" ${state.menuBusy ? "disabled" : ""}>Cambiar</button>` : ""}</div>`).join("");
+      <div><b>${ic} ${label}: ${esc(m[k].nombre)}</b>${m[k].libre ? "Sin plato en el plan" : esc(m[k].ingredientes.map((i) => `${i.nombre} ${i.texto}`).join(" · "))}</div>
+      ${canSwap && !m[k].libre ? `<button class="swap" data-swap="${k}" ${state.menuBusy ? "disabled" : ""}>Cambiar</button>` : ""}</div>`).join("");
   $("modal-extra").querySelectorAll("[data-swap]").forEach((b) => b.addEventListener("click", () => swapMeal(fecha, b.dataset.swap)));
   $("modal").hidden = false;
   $("modal-close").focus();
@@ -541,7 +546,7 @@ function renderMenuList() {
       title="${esc(i.platos.join(" · "))}"><span class="grow">${esc(i.nombre)} <small>${esc(i.texto)}</small></span>${st}</button></li>`;
   }).join("")}</ul>`).join("");
   $("menu-list").innerHTML = head("🥗", "Ingredientes del menú", "#E8604C", `<span class="pill" style="--tint:#E8604C">${moved}/${n}</span>`)
-    + tabs + `<p class="note mi-hint">Para ${w.personas} personas, comida y cena de toda la semana. Toca para pasarlo a «${esc(w.lista)}».</p>`
+    + tabs + `<p class="note mi-hint">Para ${w.personas} personas, ${(w.tomas || []).length > 2 ? "todas las tomas" : "comida y cena"} de toda la semana${w.plan ? ` (${esc(w.plan)})` : ""}. Toca para pasarlo a «${esc(w.lista)}».</p>`
     + `<div class="scroll">${sections}<p class="note">No incluye lo de la despensa de siempre: ${esc(w.basicos.join(", ").toLowerCase())}.</p></div>`;
   $("menu-list").querySelectorAll("[data-week]").forEach((b) => b.addEventListener("click", () => { state.menuWeek = +b.dataset.week; renderMenuList(); }));
   $("menu-list").querySelectorAll("[data-k]").forEach((b) => b.addEventListener("click", () => toShopping(b.dataset.k)));
