@@ -372,6 +372,13 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 /* Podcasts */
 .pod-back { color: #3F7FD9; font-weight: 600; font-size: 14px; padding: 4px 0 6px; text-align: left; }
 .pod-ep .tv-logo { width: 34px; height: 34px; }
+.pod-row { display: flex; gap: 6px; align-items: stretch; min-width: 0; }
+.pod-row .tv-chan { flex: 1; min-width: 0; }
+.pod-pin { flex: none; width: 42px; border-radius: 14px; background: var(--highlight); font-size: 16px; filter: grayscale(1); opacity: .45; }
+.pod-pin.on { filter: none; opacity: 1; }
+.pod-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pod-pin-txt { font-size: 13px; font-weight: 600; color: var(--ink-soft); padding: 4px 0; }
+.pod-pin-txt.on { color: #E8604C; }
 .pod-ep small { flex-basis: 100%; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .tv-chans .sub-h { margin: 10px 0 2px; }
 .pod-player { display: flex; gap: 22px; align-items: center; width: 100%; height: 100%; padding: 8px; min-height: 0; }
@@ -552,6 +559,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 
   .hoy-top, .hoy-bottom, .casa, .consumo, .tareas, .tv { display: flex; flex-direction: column; height: auto; }
   .tv-chans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tv-chans > .sub-h, .tv-chans > .empty { grid-column: 1 / -1; }  /* los títulos de sección, a lo ancho */
   .tv-chan { flex-wrap: wrap; column-gap: 6px; row-gap: 0; min-width: 0; }
   .band { flex-wrap: wrap; padding: 16px 18px; row-gap: 12px; }
   .band-weather { flex: 1 1 100%; }

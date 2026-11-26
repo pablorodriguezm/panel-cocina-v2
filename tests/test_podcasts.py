@@ -167,6 +167,22 @@ async def test_bad_password_and_unknown_paths(tmp_path, monkeypatch):
         await oc.episode("../login")
 
 
+@pytest.mark.anyio
+async def test_pinned_podcasts_are_kept_in_order_and_survive_a_restart(tmp_path):
+    oc, fake = make(tmp_path)
+    assert (await oc.library())["fijados"] == []
+    oc.pin("/p12345-AbCdEf", True)
+    oc.pin("/itunes617416468/accidental-tech-podcast", True)
+    oc.pin("/p12345-AbCdEf", True)                       # otra vez: pasa al final, sin repetirse
+    assert oc.pins == ["/itunes617416468/accidental-tech-podcast", "/p12345-AbCdEf"]
+    again, _ = make(tmp_path, fake)
+    assert (await again.library())["fijados"] == oc.pins
+    again.pin("/itunes617416468/accidental-tech-podcast", False)
+    assert again.pins == ["/p12345-AbCdEf"]
+    with pytest.raises(ValueError):
+        again.pin("https://evil.example/", True)
+
+
 def test_not_configured_without_both_variables(monkeypatch):
     monkeypatch.delenv("OVERCAST_CLAVE")
     assert podcasts.credentials() is None
@@ -188,6 +204,9 @@ def test_endpoints(tmp_path, monkeypatch):
         assert c.post("/api/podcasts/progreso", json={"id": "AbCd123", "segundos": 5}).status_code == 404  # sin abrir
         assert c.get("/api/podcasts/episodio/AbCd123").json()["inicio"] == 1234
         assert c.post("/api/podcasts/progreso", json={"id": "AbCd123", "segundos": 1400}).json() == {"ok": True, "version": 8}
+        assert c.post("/api/podcasts/fijar", json={"ruta": "/p12345-AbCdEf", "fijado": True}).json() == {"fijados": ["/p12345-AbCdEf"]}
+        assert c.get("/api/podcasts").json()["fijados"] == ["/p12345-AbCdEf"]
+        assert c.post("/api/podcasts/fijar", json={"ruta": "/account"}).status_code == 400
         body = json.dumps(c.get("/api/podcasts").json())
         assert CLAVE not in body and "s1" not in body
     monkeypatch.delenv("OVERCAST_EMAIL")

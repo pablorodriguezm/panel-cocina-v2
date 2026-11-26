@@ -13,6 +13,7 @@ GET  /api/podcasts        → podcasts de Overcast: «para seguir» y tus podcas
 GET  /api/podcasts/podcast?ruta=…  → capítulos de un podcast
 GET  /api/podcasts/episodio/{id}   → audio y por dónde ibas de un capítulo
 POST /api/podcasts/progreso        → guarda en Overcast por dónde vas {id, segundos, terminado}
+POST /api/podcasts/fijar           → fija un podcast arriba de la lista o lo quita {ruta, fijado}
 GET  /api/cocina          → temporizadores y estado del fogón (docs/COCINA.md)
 POST /api/cocina/temporizadores            → nuevo temporizador {minutos, nombre}
 POST /api/cocina/temporizadores/{id}/sumar → suma minutos {minutos}
@@ -307,6 +308,14 @@ async def podcasts_episode(episode_id: str):
     except (httpx.HTTPError, podcasts.NotLoggedIn) as e:
         state["podcasts"]._fail(e)
         raise HTTPException(502, state["podcasts"].error)
+
+
+@app.post("/api/podcasts/fijar")
+async def podcasts_pin(body: dict):
+    try:
+        return {"fijados": _podcasts().pin(str(body.get("ruta") or ""), bool(body.get("fijado", True)))}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.post("/api/podcasts/progreso")

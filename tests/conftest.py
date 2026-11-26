@@ -9,3 +9,4 @@ def tv_key_path(tmp_path, monkeypatch):
     monkeypatch.setattr(cocina, "DATA_PATH", tmp_path / "cocina.json")
     from app import podcasts
     monkeypatch.setattr(podcasts, "DATA_PATH", tmp_path / "overcast.json")
+    monkeypatch.setattr(podcasts, "PINS_PATH", tmp_path / "podcasts-fijados.json")
