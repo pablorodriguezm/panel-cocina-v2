@@ -1,7 +1,33 @@
 # Menú semanal
 
-El panel propone cada semana una comida y una cena saludables (cocina mediterránea sencilla) y la lista de lo que
-hace falta comprar. Solo se ve en el panel: no se escribe en el calendario de Apple.
+El panel enseña el menú de cada semana y la lista de lo que hace falta comprar. Por defecto sigue los **planes
+nutricionales** de Pablo, con las cinco tomas del día. Solo se ve en el panel: no se escribe en el calendario de Apple.
+
+## Planes nutricionales (modo por defecto)
+
+Los dos planes de la nutricionista (del 23 de enero y del 27 de febrero) están en `app/planes.yaml` y se siguen **tal
+cual, en semanas alternas**: la semana del 23 de noviembre de 2026 el de enero, la siguiente el de febrero, y así.
+
+- **Tomas:** desayuno, media mañana, comida, merienda y cena. En Hoy y Calendario salen la comida y la cena; al
+  tocarlas se ven las cinco, cada una con sus ingredientes y su botón **Cambiar**.
+- **Cantidades:** los planes solo traen el nombre del plato. Las cantidades son para 2 personas, a ración normal, y
+  están en `app/recetario.yaml` (las recetas que empiezan por `plan-`).
+- **Compra:** todas las tomas, desayunos y tentempiés incluidos, entran en los ingredientes de la semana. El café va
+  con lo de la despensa de siempre y no sale.
+- **Platos con jamón o lomo:** se quedan como están. Rim no come cerdo y los adapta o se los salta.
+- **Opciones:** en «Almendras o yogur griego ligero» y «Yogur griego ligero o café», la compra lleva la primera
+  opción.
+- **«Libre»** (la cena del sábado del plan de febrero): sin plato ni compra.
+- **Cambiar un plato:** la comida y la cena se cambian por otra del mismo grupo (también del recetario); un desayuno,
+  por otro desayuno; una media mañana o una merienda, por otro tentempié.
+
+Para empezar los turnos en otra semana, o volver al menú sorteado:
+
+```yaml
+menu:
+  planes_desde: 2026-11-30   # la semana de ese lunes toca el primer plan
+  # modo: recetario          # comida y cena sorteadas del recetario, como antes
+```
 
 ## Dónde se ve
 
@@ -11,9 +37,9 @@ hace falta comprar. Solo se ve en el panel: no se escribe en el calendario de Ap
   Lo que ya parece estar en la Compra sale como «ya en la lista». Lo de la despensa de siempre (aceite, sal,
   especias…) no sale.
 
-## Cómo se elige
+## Menú sorteado (modo recetario)
 
-`app/menu.py` sigue un plan fijo por día para que la semana quede equilibrada:
+Con `menu.modo: recetario`, `app/menu.py` sigue un plan fijo por día para que la semana quede equilibrada:
 
 | | Lun | Mar | Mié | Jue | Vie | Sáb | Dom |
 |---|---|---|---|---|---|---|---|

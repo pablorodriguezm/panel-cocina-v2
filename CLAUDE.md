@@ -26,15 +26,24 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 - **Precio de la luz:** el PVPC de REE coincide con el sensor `sensor.esios_pvpc` de HA. El día del cambio de hora
   hay 25 horas (dos «02:00»). En la interfaz, el precio de ahora tiene que verse antes que la media.
 - **Casa** (app/house.py): calefacción Netatmo (termostato de la caldera y válvulas), aire Daikin, temperaturas de
-  las estancias y la música del Echo Dot de la cocina. Es lo único que da órdenes a Home Assistant: solo a las
-  entidades de config.yaml, con consigna acotada, modos y presets permitidos, y reproducir/pausar/volumen.
+  las estancias y la música del Echo Dot de la cocina. Es lo único que da órdenes a Home Assistant (además de los
+  anuncios de la cocina): solo a las entidades de config.yaml, con consigna acotada, modos y presets permitidos, y
+  reproducir/pausar/volumen.
 - **Usuarios:** pantalla de bloqueo con avatar de Pablo y de Rim, **sin PIN**. Lo común igual para los dos;
   lo personal (de momento el trayecto al trabajo, cada uno a un destino distinto) según quién entra.
-- **Menú semanal** (app/menu.py, `docs/MENU.md`): comida y cena saludables de un recetario fijo
-  (`app/recetario.yaml`, para 2 personas, con platos de temporada), elegidas con un plan equilibrado por día. Cada
-  plato se puede cambiar por otro del mismo tipo tocándolo. Solo se enseña en el panel
-  (Hoy, Calendario y Tareas), no se escribe en el calendario de Apple. Sus ingredientes de la semana se pasan a la
-  Compra tocándolos; el Atajo los recoge (`POST /api/recordatorios/recoger`) y los añade a Recordatorios.
+- **Menú semanal** (app/menu.py, `docs/MENU.md`): por defecto, los dos planes nutricionales de Pablo
+  (`app/planes.yaml`, 23 de enero y 27 de febrero) tal cual y en semanas alternas, con las cinco tomas (desayuno,
+  media mañana, comida, merienda y cena); las cantidades, para 2, en `app/recetario.yaml` (recetas `plan-`). Los
+  platos con jamón o lomo se quedan (Rim no come cerdo y los adapta). Con `menu.modo: recetario`, comida y cena
+  sorteadas del recetario con un plan equilibrado por día. Cada plato se puede cambiar por otro del mismo tipo
+  tocándolo. Solo se enseña en el panel (Hoy, Calendario y Tareas), no se escribe en el calendario de Apple. Sus
+  ingredientes de la semana se pasan a la Compra tocándolos; el Atajo los recoge (`POST /api/recordatorios/recoger`)
+  y los añade a Recordatorios.
+- **Cocina** (app/cocina.py, `docs/COCINA.md`): temporizadores en el servidor (botón ⏲️, también sobre el bloqueo) y
+  aviso de fogón u horno olvidado con el circuito «Cocina» del Shelly: encendido con más de 150 W de media en 10 min;
+  aviso a la 1 h, fuerte a las 2 h, y de 0:00 a 6:00 fuerte a los 15 min; con un temporizador en marcha no avisa.
+  El Echo de la cocina anuncia los avisos y el final de los temporizadores (`notify.alexa_media`): es la única orden a
+  HA fuera de la vista Casa, con servicio y altavoz fijos y textos del panel.
 - **Calefacción: ¿gas o aire?** (app/calefaccion.py, `docs/CALEFACCION.md`): en Energía, qué sale más barato por
   kWh de calor, ahora y hora a hora: gas TUR.1 (`app/gas.yaml`, hay que añadir cada trimestre) ÷ rendimiento de la
   caldera Bosch Condens 2300i W, frente a PVPC con impuestos ÷ COP del Daikin ADEAS100A de conductos con la

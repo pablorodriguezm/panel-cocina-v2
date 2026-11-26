@@ -125,9 +125,20 @@ calefaccion:
 shelly_tarifa:
   con_impuestos: true
 
-# Menú semanal (docs/MENU.md). Opcional: sin esta sección, para 2 personas y a la primera lista de recordatorios.
+# Menú semanal (docs/MENU.md). Opcional: sin esta sección, los planes nutricionales para 2 personas y a la primera
+# lista de recordatorios.
 menu:
   personas: 2
+  # modo: recetario          # comida y cena sorteadas del recetario en vez de los planes de app/planes.yaml
+  # planes_desde: 2026-11-23 # la semana de ese lunes toca el primer plan
+
+# Temporizadores y fogón olvidado (docs/COCINA.md). Opcional: estos son los valores por defecto.
+cocina:
+  umbral_w: 150
+  aviso_min: 60
+  fuerte_min: 120
+  noche_min: 15
+  anuncios: true             # el Echo de casa.musica anuncia el fogón y el final de los temporizadores
   lista_compra: Compra
 
 energia:
