@@ -66,7 +66,8 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
 - **TV** (app/tv.py, `docs/TV.md`): canales principales dentro del panel. RTVE y TVG en m3u8 abierto (lista de
   TDTChannels, con reserva fija) por el intermediario `/api/tv/hls`, que solo pide a los servidores de esas listas y
   nunca a la red de casa; Antena 3 y laSexta con el reproductor de Atresplayer incrustado; La Séptima por YouTube;
-  Telecinco y Cuatro solo con enlace (Mediaset no deja incrustar). Con la tele puesta no se bloquea la pantalla.
+  Telecinco y Cuatro solo con enlace (Mediaset no deja incrustar). Con la tele puesta no se bloquea la pantalla, y al
+  cambiar de pestaña sigue en pequeño en una esquina (#tv-player fuera de las vistas: solo cambia de posición, no se recarga).
   «Mi lista» (app/iptv.py): la lista IPTV privada (Xtream: servidor, usuario y clave en variables de Portainer), solo
   canales en directo, con buscador y grupos. La clave nunca sale del servidor: la tablet recibe ids y fichas opacas.
   Para Antena 3 y laSexta (DRM) el panel se abre por https (proxy inverso del Synology, solo red de casa).

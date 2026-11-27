@@ -13,8 +13,12 @@ instalar nada más.
 | Telecinco, Cuatro | Botón «Abrir en su web» | Mediaset no deja incrustar su reproductor |
 
 Tocar un canal lo pone; la pantalla completa es la del propio reproductor. El panel recuerda el último canal y lo
-vuelve a poner al entrar en la pestaña. Con la tele puesta **no se bloquea** a los 2 minutos; al salir de la pestaña
-la emisión se para.
+vuelve a poner al entrar en la pestaña. Con la tele puesta **no se bloquea** a los 2 minutos.
+
+**Al cambiar de pestaña la tele no se para:** se queda en pequeño en una esquina (abajo a la izquierda en la tablet,
+encima de la barra en el iPhone), con **⤢** para volver a TV y **✕** para quitarla. Vale para todos los canales,
+también Atresplayer y YouTube: el reproductor vive fuera de las pestañas y solo cambia de posición, así que no se
+recarga. Se para al poner un podcast, al quitarla con ✕ o al volver a la pantalla de bloqueo.
 
 ## De dónde salen las emisiones
 
