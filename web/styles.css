@@ -317,7 +317,11 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .ac .rb { background: color-mix(in srgb, var(--charging) 12%, transparent); color: var(--charging); }
 .ac-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .ac .sg { padding: 8px 4px; font-size: 13.5px; }
-.ac.na { opacity: .5; }
+.ac.na > :not(.ac-power) { opacity: .5; }
+.ac-power { margin-top: 8px; padding: 9px 14px; border-radius: 999px; font-weight: 600; font-size: 14px;
+  background: color-mix(in srgb, #3BA55C 14%, transparent); color: #2E8B4A; }
+.ac-power.on { background: var(--highlight); color: var(--ink-soft); }
+.ac-power:disabled { opacity: .5; }
 .sp.off .v { color: var(--ink-muted); }
 .temps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .tcell { background: var(--highlight); border-radius: 14px; padding: 8px 12px; }

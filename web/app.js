@@ -1436,12 +1436,20 @@ function renderHeating(h) {
 function renderAircon(list) {
   if (!list?.length) { $("aircon").hidden = true; return; }
   $("aircon").hidden = false;
-  $("aircon").innerHTML = head("❄️", "Aire acondicionado", "#1E90E8") + list.map((a) => `
-    <div class="ac${a.disponible ? "" : " na"}">
-      <div class="ac-top"><div class="who">${esc(a.nombre)}<small>${a.disponible ? `ahora ${deg(a.actual)}°${a.accion === "cooling" ? " · enfriando" : a.accion === "heating" ? " · calentando" : ""}` : "no disponible"}</small></div>
+  $("aircon").innerHTML = head("❄️", "Aire acondicionado", "#1E90E8") + list.map((a) => {
+    const p = a.corriente;
+    // Sin corriente el Daikin no responde; al darle corriente tarda un poco en aparecer
+    const status = a.disponible ? `ahora ${deg(a.actual)}°${a.accion === "cooling" ? " · enfriando" : a.accion === "heating" ? " · calentando" : ""}`
+      : p && !p.encendida ? "sin corriente" : p ? "arrancando…" : "no disponible";
+    const power = p ? `<button class="ac-power${p.encendida ? " on" : ""}" data-power="${esc(a.entidad)}" data-turn="${p.encendida ? "off" : "on"}"
+        ${state.busy || !p.disponible ? "disabled" : ""}>⏻ ${p.encendida ? "Cortar corriente" : "Dar corriente"}</button>` : "";
+    return `<div class="ac${a.disponible ? "" : " na"}">
+      <div class="ac-top"><div class="who">${esc(a.nombre)}<small>${status}</small></div>
         ${a.disponible ? setpoint(a) : ""}</div>
       ${a.disponible ? chipsFor(a, "modo") : ""}
-    </div>`).join("");
+      ${power}
+    </div>`;
+  }).join("");
 }
 
 function renderRooms(list) {
@@ -1494,6 +1502,13 @@ function renderHouse() {
   root.querySelectorAll("[data-nudge]").forEach((b) => b.addEventListener("click", () => nudge(find(b.dataset.nudge), +b.dataset.d * (find(b.dataset.nudge).paso || 0.5))));
   root.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => houseCommand("preset", { entidad: b.dataset.entity, preset: b.dataset.preset }, b.dataset.entity)));
   root.querySelectorAll("[data-modo]").forEach((b) => b.addEventListener("click", () => houseCommand("modo", { entidad: b.dataset.entity, modo: b.dataset.modo }, b.dataset.entity)));
+  root.querySelectorAll("[data-power]").forEach((b) => b.addEventListener("click", () => {
+    const a = find(b.dataset.power), on = b.dataset.turn === "on";
+    // Cortar la corriente con el aire en marcha no le sienta bien: se pregunta antes
+    const running = !on && a?.disponible && a.modo && a.modo !== "off";
+    if (running && !confirm(`${a.nombre} está en marcha. Mejor apagarlo antes. ¿Cortar la corriente igualmente?`)) return;
+    houseCommand("corriente", { entidad: b.dataset.power, encendida: on, forzar: running || undefined }, b.dataset.power);
+  }));
   root.querySelectorAll("[data-music]").forEach((b) => b.addEventListener("click", () => houseCommand("musica", { accion: b.dataset.music }, "music")));
   root.querySelectorAll("[data-vol]").forEach((b) => b.addEventListener("click", () => {
     const level = Math.min(1, Math.max(0, (h.musica?.volumen ?? 0) + +b.dataset.vol));
