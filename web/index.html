@@ -151,6 +151,13 @@
     <button class="timer-fab" id="timer-fab" aria-label="Temporizadores">⏲️</button>
   </div>
   <div class="k-banner" id="k-banner" hidden></div>
+  <!-- TV: el reproductor va fuera de las vistas. En TV se coloca encima del recuadro de la imagen; en otra pestaña se
+       queda en pequeño en una esquina. Nunca se mueve de sitio en la página: así no se recarga ni se corta. -->
+  <div class="tv-player" id="tv-player" hidden>
+    <div class="tv-media" id="tv-media"></div>
+    <div class="tv-mini-bar"><button data-mini="open" aria-label="Volver a la TV">⤢</button><span id="tv-mini-name"></span>
+      <button data-mini="close" aria-label="Quitar la tele">✕</button></div>
+  </div>
   <!-- Podcasts: el audio va fuera de las vistas para que siga sonando al cambiar de pestaña (docs/PODCASTS.md) -->
   <audio id="pod-audio" preload="none"></audio>
   <div class="k-alert" id="k-alert" hidden></div>

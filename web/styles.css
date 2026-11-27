@@ -369,6 +369,18 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .tv-open { display: inline-block; padding: 10px 18px; border-radius: 999px; font-weight: 600; text-decoration: none;
   color: #3F7FD9; background: color-mix(in srgb, #3F7FD9 13%, transparent); }
 .tv-chans { display: flex; flex-direction: column; gap: 6px; overflow-x: clip; touch-action: pan-y; }
+/* El reproductor de la tele (fuera de las vistas): encima del recuadro en TV, en pequeño en las demás */
+.tv-player { position: fixed; z-index: 4; border-radius: 14px; overflow: hidden; background: #000; display: flex; flex-direction: column; }
+.tv-player[hidden] { display: none; }
+.tv-media { position: relative; flex: 1; min-height: 0; }
+.tv-media video, .tv-media iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+.tv-mini-bar { display: none; }
+.tv-player.mini { left: 18px; bottom: 18px; width: 360px; height: calc(360px * 9 / 16 + 36px); z-index: 7;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
+.tv-player.mini .tv-mini-bar { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 6px; background: #1d1915; color: #fff; }
+.tv-mini-bar span { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-mini-bar button { width: 30px; height: 28px; border-radius: 8px; background: rgba(255, 255, 255, .12); color: #fff; font-size: 15px; }
+
 /* Podcasts */
 .pod-back { color: #3F7FD9; font-weight: 600; font-size: 14px; padding: 4px 0 6px; text-align: left; }
 .pod-ep .tv-logo { width: 34px; height: 34px; }
@@ -602,6 +614,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 /* Cocina en vertical: encima de la barra de abajo, a la derecha */
 @media (orientation: portrait) {
   .kitchen { right: 14px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  .tv-player.mini { left: 12px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); width: 58vw; height: calc(58vw * 9 / 16 + 34px); }
   /* En el bloqueo no hay barra y abajo están los avatares: arriba a la derecha */
   body:has(#lock:not([hidden])) .kitchen { top: calc(14px + env(safe-area-inset-top, 0px)); bottom: auto; align-items: flex-start; }
   .timers { max-width: calc(100vw - 100px); justify-content: flex-end; }
@@ -648,6 +661,8 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .avatar .face { width: 88px; height: 88px; font-size: 38px; }
   .avatar .name { font-size: 18px; }
   .kitchen { right: auto; left: max(12px, env(safe-area-inset-left, 0px)); bottom: 12px; flex-direction: row-reverse; }
+  /* La tele en pequeño, abajo a la derecha (el botón ⏲️ va a la izquierda y la barra, a la derecha del todo) */
+  .tv-player.mini { left: auto; right: calc(72px + env(safe-area-inset-right, 0px)); bottom: 12px; width: 260px; height: calc(260px * 9 / 16 + 34px); }
   .timer-fab { width: 46px; height: 46px; font-size: 22px; }
   .timer-pill { padding: 6px 12px; min-width: 80px; }
   .timer-pill b { font-size: 18px; }
