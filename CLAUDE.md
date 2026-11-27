@@ -27,8 +27,9 @@ Web servida por un contenedor en ZimaOS (repositorio pablorodriguezm/panel-cocin
   hay 25 horas (dos «02:00»). En la interfaz, el precio de ahora tiene que verse antes que la media.
 - **Casa** (app/house.py): calefacción Netatmo (termostato de la caldera y válvulas), aire Daikin, temperaturas de
   las estancias y la música del Echo Dot de la cocina. Es lo único que da órdenes a Home Assistant (además de los
-  anuncios de la cocina): solo a las entidades de config.yaml, con consigna acotada, modos y presets permitidos, y
-  reproducir/pausar/volumen.
+  anuncios de la cocina): solo a las entidades de config.yaml, con consigna acotada, modos y presets permitidos,
+  reproducir/pausar/volumen, y la corriente del Daikin (`corriente: switch.encendido_aire_acondicionado_switch_0` en su
+  equipo de config.yaml; no se corta con el aire en marcha sin confirmarlo).
 - **Usuarios:** pantalla de bloqueo con avatar de Pablo y de Rim, **sin PIN**. Lo común igual para los dos;
   lo personal (de momento el trayecto al trabajo, cada uno a un destino distinto) según quién entra.
 - **Menú semanal** (app/menu.py, `docs/MENU.md`): por defecto, los dos planes nutricionales de Pablo

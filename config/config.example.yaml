@@ -77,6 +77,8 @@ casa:
     modos: [off, heat, cool, heat_cool]      # los que se pueden elegir desde la tablet
     equipos:
       - {entidad: climate.salon_aire, nombre: Salón}
+      # Con «corriente», un interruptor que da o corta la corriente del equipo (p. ej. un Shelly en su línea):
+      # - {entidad: climate.daikin, nombre: Daikin, corriente: switch.encendido_aire_acondicionado_switch_0}
   temperaturas:                              # sensores de temperatura de las estancias
     - {entidad: sensor.cocina_temperatura, nombre: Cocina}
     - {entidad: sensor.terraza_temperatura, nombre: Terraza}

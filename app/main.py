@@ -24,7 +24,7 @@ POST /api/menu/cambiar    → cambia la comida o la cena de un día por otro pla
 POST /api/menu/compra     → pasa un ingrediente del menú a la compra (o lo quita si el Atajo aún no lo ha recogido)
 GET  /api/casa            → calefacción, aire, temperaturas y música
 GET  /api/consumo         → potencia de ahora, por aparato y consumo de hoy por horas
-POST /api/casa/{orden}    → consigna, preset, modo o musica, solo sobre las entidades de config.yaml
+POST /api/casa/{orden}    → consigna, preset, modo, corriente o musica, solo sobre las entidades de config.yaml
 GET /api/usuario/{id}     → lo de cada uno: su trayecto
 GET /api/usuarios         → avatares de la pantalla de bloqueo y ajustes de pantalla
 GET /api/salud            → estado de cada fuente (para depurar)
@@ -218,7 +218,7 @@ async def house_command(action: str, request: Request):
         if DEMO:
             demo.house_command(action, body)
         else:
-            states = {entity: await state["ha"].state(entity)} if entity in house.climate_entities() else {}
+            states = await state["ha"].states([entity]) if entity in house.climate_entities() else {}
             domain, service, data = house.command(action, body, states)
             await state["ha"].call(domain, service, data)
             await asyncio.sleep(1.5)  # que Home Assistant recoja el cambio antes de volver a leer
