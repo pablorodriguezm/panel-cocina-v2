@@ -221,8 +221,9 @@ function go(view) {
   if (view === "casa") loadHouse();
   if (view === "consumo") loadConsumption();
   if (view === "tareas") loadMenu();
-  if (view === "tv") loadTV(); else stopTV();
+  if (view === "tv") loadTV();  // al salir de TV la tele no se para: se queda en pequeño (placePlayer)
   document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== view; });
+  placePlayer();
   document.querySelectorAll(".nav[data-go]").forEach((b) => {
     const on = b.dataset.go === view;
     b.classList.toggle("on", on);
@@ -244,6 +245,12 @@ function setupRail() {
   $("me").addEventListener("click", lock);
   $("alerts").addEventListener("click", openAlerts);
   $("timer-fab").addEventListener("click", openTimers);
+  // La tele en pequeño: ⤢ vuelve a TV, ✕ la quita. Y que siga al recuadro al girar, cambiar de tamaño o desplazarse.
+  $("tv-player").querySelector('[data-mini="open"]').addEventListener("click", () => go("tv"));
+  $("tv-player").querySelector('[data-mini="close"]').addEventListener("click", stopTV);
+  addEventListener("resize", () => requestAnimationFrame(placePlayer));
+  document.addEventListener("scroll", () => requestAnimationFrame(placePlayer), { capture: true, passive: true });
+  if (window.ResizeObserver) new ResizeObserver(() => placePlayer()).observe($("tv-screen"));
   setupPodcasts();
 }
 
@@ -760,11 +767,32 @@ function renderTVResults() {
 
 function stopTV() {
   if (state.tv.hls) { state.tv.hls.destroy(); state.tv.hls = null; }
-  const v = $("tv-screen")?.querySelector("video");
+  const v = $("tv-media")?.querySelector("video");
   if (v) { v.pause(); v.removeAttribute("src"); v.load(); }
-  if ($("tv-screen")) $("tv-screen").innerHTML = "";
+  if ($("tv-media")) $("tv-media").innerHTML = "";
+  if ($("tv-screen") && state.tv.current) $("tv-screen").innerHTML = "";
   state.tv.current = null;
   state.tv.playing = false;
+  placePlayer();
+}
+
+// El reproductor, encima del recuadro de la imagen en TV o en pequeño en una esquina en las demás pestañas. Solo cambia
+// su posición: si se moviera de sitio en la página, un reproductor incrustado se recargaría y se cortaría.
+function placePlayer() {
+  const p = $("tv-player");
+  if (!p) return;
+  const has = !!$("tv-media").firstElementChild;
+  p.hidden = !has || !state.user;
+  if (p.hidden) return;
+  const slot = $("tv-slot");
+  const r = slot && state.view === "tv" ? slot.getBoundingClientRect() : null;
+  if (r && r.width > 0) {
+    p.classList.remove("mini");
+    Object.assign(p.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+  } else {
+    p.classList.add("mini");
+    Object.assign(p.style, { left: "", top: "", width: "", height: "" });
+  }
 }
 
 function playTV(id, sourceIndex = 0, retried = false) {
@@ -775,30 +803,35 @@ function playTV(id, sourceIndex = 0, retried = false) {
   state.tv.current = id;
   try { if (c.tipo !== "web") localStorage.setItem("tv-canal", id); } catch { /* sin almacenamiento */ }
   document.querySelectorAll(".tv-chan").forEach((b) => b.classList.toggle("on", b.dataset.tv === id));
-  const box = $("tv-screen");
+  const box = $("tv-screen"), media = $("tv-media");
   const bar = (extra = "") => `<div class="tv-bar"><b>${esc(c.nombre)}</b><span class="tv-msg" id="tv-msg">${extra}</span></div>`;
+  $("tv-mini-name").textContent = c.nombre;
   if (c.tipo === "web") {
     box.innerHTML = `<div class="tv-idle"><span>🔒</span><p><b>${esc(c.nombre)}</b> no se puede ver dentro del panel:
       su cadena no deja incrustar su reproductor.</p><a class="tv-open" href="${esc(c.web)}" target="_blank" rel="noopener">Abrir en su web</a></div>`;
     return;
   }
   if (c.embed) {
-    box.innerHTML = `<div class="tv-frame"><iframe src="${esc(c.embed)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-      allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>${bar(c.tipo === "atres" && c.web
+    media.innerHTML = `<iframe src="${esc(c.embed)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+      allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+    box.innerHTML = `<div class="tv-frame" id="tv-slot"></div>${bar(c.tipo === "atres" && c.web
       ? `Si dice «sin emisión», <a class="tv-link" href="${esc(c.web)}" target="_blank" rel="noopener">ábrelo en Atresplayer</a>` : "")}`;
     state.tv.playing = true;
+    placePlayer();
   } else {
-    box.innerHTML = `<div class="tv-frame"><video playsinline autoplay controls></video></div>${bar("Cargando…")}`;
-    const video = box.querySelector("video");
+    media.innerHTML = `<video playsinline autoplay controls></video>`;
+    box.innerHTML = `<div class="tv-frame" id="tv-slot"></div>${bar("Cargando…")}`;
+    placePlayer();
+    const video = media.querySelector("video");
     const src = c.fuentes[sourceIndex];
     const failed = () => {
       if (state.tv.current !== id) return;
       if (sourceIndex + 1 < c.fuentes.length) return playTV(id, sourceIndex + 1, retried);  // la siguiente emisión
       if (!retried) {  // una vez: con la lista de canales recién pedida
-        $("tv-msg").textContent = "Reintentando…";
+        if ($("tv-msg")) $("tv-msg").textContent = "Reintentando…";
         return refreshTV().then(() => { if (state.tv.current === id) playTV(id, 0, true); });
       }
-      $("tv-msg").textContent = "No se puede ver ahora mismo: la cadena no responde.";
+      if ($("tv-msg")) $("tv-msg").textContent = "No se puede ver ahora mismo: la cadena no responde.";
       state.tv.playing = false;
     };
     video.addEventListener("playing", () => { if ($("tv-msg")) $("tv-msg").textContent = ""; state.tv.playing = true; });
