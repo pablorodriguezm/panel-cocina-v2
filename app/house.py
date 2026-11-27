@@ -2,7 +2,8 @@
 
 Es la única parte del panel que da órdenes a Home Assistant. Para que la tablet no pueda hacer cualquier cosa:
 - solo se aceptan las entidades que están en config.yaml (sección «casa»);
-- solo estas órdenes: consigna, preset y modo de un climate.*, y reproducir, pausar, saltar y volumen del Echo;
+- solo estas órdenes: consigna, preset y modo de un climate.*, encender o cortar la corriente de un aire (su
+  interruptor «corriente» de config.yaml), y reproducir, pausar, saltar y volumen del Echo;
 - la consigna se ajusta a los límites y al paso que da la propia entidad, y los modos y presets tienen que estar
   tanto en config.yaml como en la entidad.
 """
@@ -27,11 +28,18 @@ def _modes(values) -> list[str]:
 
 
 def _named(items) -> list[dict]:
-    """Admite «- climate.x» o «- {entidad: climate.x, nombre: X}»."""
+    """Admite «- climate.x» o «- {entidad: climate.x, nombre: X, corriente: switch.y}»."""
     out = []
     for it in items or []:
-        out.append({"entidad": it, "nombre": None} if isinstance(it, str) else {"entidad": it["entidad"], "nombre": it.get("nombre")})
+        out.append({"entidad": it, "nombre": None, "corriente": None} if isinstance(it, str)
+                   else {"entidad": it["entidad"], "nombre": it.get("nombre"), "corriente": it.get("corriente")})
     return out
+
+
+def power_switches() -> dict[str, str]:
+    """{climate del aire: su interruptor de corriente} (el Daikin suele estar sin corriente)."""
+    return {a["entidad"]: a["corriente"] for a in _named((cfg().get("aire") or {}).get("equipos"))
+            if isinstance(a.get("corriente"), str) and a["corriente"].startswith("switch.")}
 
 
 def entities() -> list[str]:
@@ -42,6 +50,7 @@ def entities() -> list[str]:
         ids.append(heat["termostato"])
     ids += [v["entidad"] for v in _named(heat.get("valvulas"))]
     ids += [a["entidad"] for a in _named((c.get("aire") or {}).get("equipos"))]
+    ids += list(power_switches().values())
     ids += [t["entidad"] for t in _named(c.get("temperaturas"))]
     if (c.get("musica") or {}).get("entidad"):
         ids.append(c["musica"]["entidad"])
@@ -96,8 +105,21 @@ def build(states: dict[str, dict | None]) -> dict:
     aire = c.get("aire") or {}
     if aire.get("equipos"):
         modes = _modes(aire.get("modos") or ["off", "heat", "cool", "heat_cool"])
-        out["aire"] = [v for v in (_climate(states.get(x["entidad"]), x["nombre"], allowed_modes=modes, allowed_presets={})
-                                   for x in _named(aire["equipos"])) if v]
+        out["aire"] = []
+        for x in _named(aire["equipos"]):
+            v = _climate(states.get(x["entidad"]), x["nombre"], allowed_modes=modes, allowed_presets={})
+            sw = power_switches().get(x["entidad"])
+            if v is None and sw:  # sin corriente el aire ni siquiera responde: se enseña igual, para poder encenderlo
+                v = {"entidad": x["entidad"], "nombre": x["nombre"] or x["entidad"], "disponible": False, "modo": None,
+                     "accion": None, "actual": None, "consigna": None, "min": None, "max": None, "paso": 0.5,
+                     "preset": None, "modos": [], "presets": []}
+            if v is None:
+                continue
+            if sw:
+                st = states.get(sw)
+                v["corriente"] = {"entidad": sw, "encendida": bool(st) and st.get("state") == "on",
+                                  "disponible": bool(st) and st.get("state") not in ("unavailable", "unknown")}
+            out["aire"].append(v)
     temps = []
     for t in _named(c.get("temperaturas")):
         st = states.get(t["entidad"])
@@ -144,6 +166,19 @@ def command(action: str, body: dict, states: dict[str, dict | None]) -> tuple[st
     if entity not in climate_entities():
         raise ValueError("Esa entidad no está en la configuración de la casa")
     st = states.get(entity)
+
+    if action == "corriente":
+        sw = power_switches().get(entity)
+        if not sw:
+            raise ValueError("Ese aire no tiene interruptor de corriente en config.yaml")
+        if body.get("encendida") is True:
+            return "switch", "turn_on", {"entity_id": sw}
+        # Cortar la corriente con el aire en marcha no le sienta bien al compresor: solo si se confirma
+        running = st and st.get("state") not in ("off", "unavailable", "unknown", None)
+        if running and body.get("forzar") is not True:
+            raise ValueError("El aire está en marcha: apágalo antes de cortar la corriente")
+        return "switch", "turn_off", {"entity_id": sw}
+
     if not st or st.get("state") in ("unavailable", "unknown"):
         raise ValueError("El equipo no está disponible ahora")
     a = st.get("attributes", {})

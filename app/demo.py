@@ -133,7 +133,8 @@ _HOUSE["calefaccion"]["termostato"] = _clim("climate.sala_de_estar", "Salón", "
 _HOUSE["calefaccion"]["valvulas"] = [_clim("climate.habitacion_entrada", "Entrada", "auto", "idle", 22.0, 19.0, _PRESETS, "schedule"),
                                      _clim("climate.habitacion_matrimonio", "Matrimonio", "auto", "heating", 20.5, 21.0, _PRESETS, "schedule"),
                                      _clim("climate.dormitorio_secundario", "Dormitorio secundario", "auto", "idle", 22.0, 19.0, _PRESETS, "schedule")]
-_HOUSE["aire"] = [{**_clim("climate.daikin", "Daikin", "unavailable", None, None, None, modes=()), "disponible": False}]
+_HOUSE["aire"] = [{**_clim("climate.daikin", "Daikin", "unavailable", None, None, None, modes=()), "disponible": False,
+                   "corriente": {"entidad": "switch.encendido_aire_acondicionado_switch_0", "encendida": False, "disponible": True}}]
 
 
 async def house() -> dict:
@@ -153,6 +154,15 @@ def house_command(action: str, body: dict) -> None:
     c = next((x for x in every if x["entidad"] == body.get("entidad")), None)
     if c is None:
         raise ValueError("Esa entidad no está en la configuración de la casa")
+    if action == "corriente":  # con corriente, el Daikin de ejemplo «despierta» en frío a 24 °C
+        from .house import MODE_NAMES
+        on = body.get("encendida") is True
+        if not on and c.get("disponible") and c.get("modo") not in ("off", None) and body.get("forzar") is not True:
+            raise ValueError("El aire está en marcha: apágalo antes de cortar la corriente")
+        c["corriente"]["encendida"] = on
+        c.update(disponible=on, modo="off" if on else "unavailable", actual=23.5 if on else None, consigna=24.0 if on else None,
+                 modos=[{"id": m, "nombre": MODE_NAMES[m]} for m in (("off", "heat", "cool", "heat_cool") if on else ())])
+        return
     if action == "consigna":
         c["consigna"] = round(min(c["max"], max(c["min"], float(body["grados"]))) * 2) / 2
     elif action == "preset":

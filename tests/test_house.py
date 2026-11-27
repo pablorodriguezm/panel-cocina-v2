@@ -70,3 +70,47 @@ def test_music_commands():
     assert house.command("musica", {"accion": "volumen", "nivel": 1.7}, {})[2]["volume_level"] == 1.0
     with pytest.raises(ValueError):
         house.command("musica", {"accion": "turn_off"}, {})
+
+
+def _with_power(cfg_text=CFG):
+    return cfg_text.replace("equipos: [{entidad: climate.aire, nombre: Aire}]",
+                            "equipos: [{entidad: climate.aire, nombre: Aire, corriente: switch.aire_corriente}]")
+
+
+def _set(tmp_path, monkeypatch, text):
+    p = tmp_path / "config2.yaml"
+    p.write_text(text, encoding="utf-8")
+    monkeypatch.setattr(config, "CONFIG_PATH", p)
+    config.load.cache_clear()
+
+
+def test_power_switch_shows_even_when_the_aircon_has_no_power(tmp_path, monkeypatch):
+    _set(tmp_path, monkeypatch, _with_power())
+    assert "switch.aire_corriente" in house.entities()
+    off = {"switch.aire_corriente": {"entity_id": "switch.aire_corriente", "state": "off", "attributes": {}}}
+    a = house.build(off)["aire"][0]          # el aire ni existe en HA: sale igual, sin corriente
+    assert a["disponible"] is False and a["nombre"] == "Aire"
+    assert a["corriente"] == {"entidad": "switch.aire_corriente", "encendida": False, "disponible": True}
+    on = {**off, "switch.aire_corriente": {"entity_id": "switch.aire_corriente", "state": "on", "attributes": {}},
+          "climate.aire": climate("climate.aire", "off")}
+    a = house.build(on)["aire"][0]
+    assert a["disponible"] is True and a["corriente"]["encendida"] is True
+    # Sin interruptor en config.yaml, como antes: sin corriente y sin aire si no responde
+    _set(tmp_path, monkeypatch, CFG)
+    assert house.build({})["aire"] == [] and "corriente" not in house.build({"climate.aire": climate("climate.aire")})["aire"][0]
+
+
+def test_power_command_only_touches_its_switch_and_protects_a_running_aircon(tmp_path, monkeypatch):
+    _set(tmp_path, monkeypatch, _with_power())
+    assert house.command("corriente", {"entidad": "climate.aire", "encendida": True}, {"climate.aire": None}) == \
+        ("switch", "turn_on", {"entity_id": "switch.aire_corriente"})
+    assert house.command("corriente", {"entidad": "climate.aire", "encendida": False}, {"climate.aire": climate("climate.aire", "off")}) == \
+        ("switch", "turn_off", {"entity_id": "switch.aire_corriente"})
+    with pytest.raises(ValueError, match="en marcha"):
+        house.command("corriente", {"entidad": "climate.aire", "encendida": False}, {"climate.aire": climate("climate.aire", "cool")})
+    assert house.command("corriente", {"entidad": "climate.aire", "encendida": False, "forzar": True},
+                         {"climate.aire": climate("climate.aire", "cool")})[1] == "turn_off"
+    with pytest.raises(ValueError):
+        house.command("corriente", {"entidad": "climate.salon", "encendida": True}, {})   # la calefacción no tiene
+    with pytest.raises(ValueError):
+        house.command("corriente", {"entidad": "switch.otro", "encendida": True}, {})
