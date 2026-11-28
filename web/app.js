@@ -880,11 +880,14 @@ const MAIN_MEALS = MEALS.filter(([k]) => k === "comida" || k === "cena");
 const menuFor = (d) => state.menu.flatMap((w) => w?.dias || []).find((x) => x.fecha === dayKey(d));
 const weekOf = (fecha) => state.menu.find((w) => w?.dias?.some((x) => x.fecha === fecha));
 
-function mealLines(day) {
+function mealLines(day, big = false) {
   const m = menuFor(day);
   if (!m) return "";
-  return `<button class="meals" data-meal="${m.fecha}" aria-label="Menú del día">${MAIN_MEALS.filter(([k]) => m[k])
-    .map(([k, ic]) => `<span${m[k].libre ? ' class="free"' : ""}><i>${ic}</i>${esc(m[k].nombre)}</span>`).join("")}</button>`;
+  // En Calendario (big) cada toma lleva su nombre encima y el plato, con más líneas
+  return `<button class="meals${big ? " big" : ""}" data-meal="${m.fecha}" aria-label="Menú del día">${MAIN_MEALS.filter(([k]) => m[k])
+    .map(([k, ic, label]) => big
+      ? `<div class="meal"><em><i>${ic}</i>${label}</em><span${m[k].libre ? ' class="free"' : ""}>${esc(m[k].nombre)}</span></div>`
+      : `<span${m[k].libre ? ' class="free"' : ""}><i>${ic}</i>${esc(m[k].nombre)}</span>`).join("")}</button>`;
 }
 
 function openMeal(fecha) {
@@ -1033,7 +1036,7 @@ function renderNext() {
   el.onclick = () => openEvent(next);
 }
 
-function dayColumn(day, all, now, { weatherLine = false } = {}) {
+function dayColumn(day, all, now, { weatherLine = false, split = false } = {}) {
   const list = eventsOn(day, all);
   const isToday = dayKey(day) === dayKey(now);
   const past = startOfDay(day) < startOfDay(now);
@@ -1042,7 +1045,7 @@ function dayColumn(day, all, now, { weatherLine = false } = {}) {
   const holiday = list.some((e) => e.festivo);
   return `<div class="dcol${isToday ? " today" : ""}${past ? " past" : ""}${holiday ? " festivo" : ""}">
     <div class="dhead"><span class="dn">${isToday ? "Hoy" : wdShort(day)}</span><span class="dd">${day.getDate()}</span></div>
-    ${w}${evButtons(list)}${mealLines(day)}</div>`;
+    ${w}${split ? `<div class="evs">${evButtons(list)}</div>${mealLines(day, true)}` : evButtons(list) + mealLines(day)}</div>`;
 }
 
 function renderWeek() {
@@ -1112,10 +1115,28 @@ function renderCalendar() {
   const monday = addDays(now, -((now.getDay() + 6) % 7));
   const all = events().map((e, idx) => ({ ...e, idx }));
   let html = "";
-  for (let i = 0; i < 14; i++) html += dayColumn(addDays(monday, i), all, now, { weatherLine: true });
+  for (let i = 0; i < 14; i++) html += dayColumn(addDays(monday, i), all, now, { weatherLine: true, split: true });
   $("cal").innerHTML = html;
+  fitEvents($("cal"));
   bindEvents($("cal"), all);
   bindMeals($("cal"));
+}
+
+// Con medio día para el menú, las citas que no caben se esconden y se avisa con «+N más»
+function fitEvents(root) {
+  root.querySelectorAll(".evs").forEach((box) => {
+    const items = [...box.children];
+    if (!items.length || !box.clientHeight || box.scrollHeight <= box.clientHeight + 1) return;
+    const more = document.createElement("span");
+    more.className = "more";
+    box.append(more);
+    let hidden = 0;
+    while (hidden < items.length && box.scrollHeight > box.clientHeight + 1) {
+      items[items.length - 1 - hidden].hidden = true;
+      hidden++;
+      more.textContent = `+${hidden} más`;
+    }
+  });
 }
 
 // ---------- Tiempo ----------
